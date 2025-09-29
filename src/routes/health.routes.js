@@ -12,3 +12,4 @@ router.get("/", async (_req, res, next) => {
     next({ status: 500, message: "DB down", details: e.message });
   }
 });
+

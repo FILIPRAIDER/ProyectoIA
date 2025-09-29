@@ -31,14 +31,13 @@ router.get("/:userId/profile", validate(UserIdParams, "params"), async (req, res
   }
 });
 
-// Crea o reemplaza perfil (upsert semántico: si no hay, crea; si hay, actualiza)
+// Crea o actualiza (upsert)
 router.post(
   "/:userId/profile",
   validate(UserIdParams, "params"),
   validate(CreateProfileBody),
   async (req, res, next) => {
     try {
-      // verifica existencia user
       const user = await prisma.user.findUnique({ where: { id: req.params.userId }, select: { id: true } });
       if (!user) throw new HttpError(404, "Usuario no encontrado");
 
@@ -54,7 +53,6 @@ router.post(
   }
 );
 
-// Actualiza parcialmente
 router.patch(
   "/:userId/profile",
   validate(UserIdParams, "params"),
@@ -79,6 +77,15 @@ const CreateCertBody = z.object({
   issuer: z.string().min(2).max(160).optional(),
   issueDate: z.string().datetime().optional(), // ISO
   url: z.string().url().optional(),
+
+  // Metadatos de archivo (opcionales)
+  fileUrl: z.string().url().optional(),
+  fileProvider: z.string().min(2).max(40).optional(), // "imagekit", etc.
+  fileKey: z.string().min(1).optional(),
+  fileType: z.string().min(3).max(100).optional(), // "image/jpeg", ...
+  fileSize: z.number().int().min(1).max(10 * 1024 * 1024).optional(), // 10 MB
+  fileWidth: z.number().int().min(1).max(20000).optional(),
+  fileHeight: z.number().int().min(1).max(20000).optional(),
 });
 
 router.get("/:userId/certifications", validate(UserIdParams, "params"), async (req, res, next) => {
@@ -109,6 +116,14 @@ router.post(
           issuer: req.body.issuer ?? null,
           issueDate: req.body.issueDate ? new Date(req.body.issueDate) : null,
           url: req.body.url ?? null,
+
+          fileUrl: req.body.fileUrl ?? null,
+          fileProvider: req.body.fileProvider ?? null,
+          fileKey: req.body.fileKey ?? null,
+          fileType: req.body.fileType ?? null,
+          fileSize: req.body.fileSize ?? null,
+          fileWidth: req.body.fileWidth ?? null,
+          fileHeight: req.body.fileHeight ?? null,
         },
       });
       res.status(201).json(created);
@@ -135,6 +150,14 @@ router.patch(
             ? { issueDate: req.body.issueDate ? new Date(req.body.issueDate) : null }
             : {}),
           ...("url" in req.body ? { url: req.body.url ?? null } : {}),
+
+          ...("fileUrl" in req.body ? { fileUrl: req.body.fileUrl ?? null } : {}),
+          ...("fileProvider" in req.body ? { fileProvider: req.body.fileProvider ?? null } : {}),
+          ...("fileKey" in req.body ? { fileKey: req.body.fileKey ?? null } : {}),
+          ...("fileType" in req.body ? { fileType: req.body.fileType ?? null } : {}),
+          ...("fileSize" in req.body ? { fileSize: req.body.fileSize ?? null } : {}),
+          ...("fileWidth" in req.body ? { fileWidth: req.body.fileWidth ?? null } : {}),
+          ...("fileHeight" in req.body ? { fileHeight: req.body.fileHeight ?? null } : {}),
         },
       });
       res.json(updated);

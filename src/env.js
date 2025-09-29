@@ -13,3 +13,9 @@ function ensureSSL(url) {
 
 export const DATABASE_URL = ensureSSL(process.env.DATABASE_URL);
 export const PORT = process.env.PORT || "4001";
+
+// ImageKit config
+export const IK_PUBLIC_KEY = process.env.IMAGEKIT_PUBLIC_KEY || "";
+export const IK_PRIVATE_KEY = process.env.IMAGEKIT_PRIVATE_KEY || "";
+export const IK_URL_ENDPOINT = process.env.IMAGEKIT_URL_ENDPOINT || "";
+export const IK_UPLOAD_FOLDER = process.env.IMAGEKIT_UPLOAD_FOLDER || "/certifications";

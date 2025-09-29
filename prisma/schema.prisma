@@ -102,14 +102,22 @@ model MemberProfile {
 }
 
 model Certification {
-  id        String   @id @default(cuid())
-  userId    String
-  name      String
-  issuer    String?
-  issueDate DateTime?
-  url       String?
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  userId     String
+  name       String
+  issuer     String?
+  issueDate  DateTime?
+  url        String?      // enlace público opcional (si el usuario quiere)
+  // NUEVO (opcional)
+  fileUrl    String?      // URL servible (CDN / público controlado)
+  fileProvider String?    // "imagekit" | "s3" | "cloudinary" (texto libre al inicio)
+  fileKey    String?      // clave interna del proveedor (para borrar/rotar)
+  fileType   String?      // "image/jpeg" | "image/png" | "application/pdf"
+  fileSize   Int?         // bytes (para validar límites)
+  fileWidth  Int?         // px, solo imágenes
+  fileHeight Int?         // px, solo imágenes
 
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId])
 }
 
