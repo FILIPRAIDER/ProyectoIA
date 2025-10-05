@@ -145,23 +145,36 @@ router.get("/:teamId/members", validate(TeamIdOnlyParams, "params"), async (req,
 const AddMemberBody = z.object({
   userId: z.string().min(1),
   role: z.enum(["LIDER", "MIEMBRO"]).optional().default("MIEMBRO"),
+  byUserId: z.string().min(1), // NUEVO: quién ejecuta la acción
 });
 
 router.post("/:teamId/members", validate(TeamIdOnlyParams, "params"), validate(AddMemberBody), async (req, res, next) => {
   try {
-    const [team, user] = await Promise.all([
-      prisma.team.findUnique({ where: { id: req.params.teamId }, select: { id: true } }),
-      prisma.user.findUnique({ where: { id: req.body.userId }, select: { id: true } }),
+    const { teamId } = req.params;
+    const { userId, role, byUserId } = req.body;
+
+    const [team, targetUser, actor] = await Promise.all([
+      prisma.team.findUnique({ where: { id: teamId }, select: { id: true } }),
+      prisma.user.findUnique({ where: { id: userId }, select: { id: true } }),
+      prisma.user.findUnique({ where: { id: byUserId }, select: { id: true, role: true } }),
     ]);
     if (!team) throw new HttpError(404, "Equipo no encontrado");
-    if (!user) throw new HttpError(404, "Usuario no encontrado");
+    if (!targetUser) throw new HttpError(404, "Usuario a agregar no encontrado");
+    if (!actor) throw new HttpError(404, "Usuario actor (byUserId) no encontrado");
+
+    const isAdmin = actor.role === "ADMIN";
+    const actorMembership = await prisma.teamMember.findUnique({
+      where: { teamId_userId: { teamId, userId: byUserId } },
+      select: { role: true },
+    });
+    const isLeader = actorMembership?.role === "LIDER";
+
+    if (!isAdmin && !isLeader) {
+      throw new HttpError(403, "Solo un líder del equipo (o admin) puede agregar miembros");
+    }
 
     const created = await prisma.teamMember.create({
-      data: {
-        teamId: req.params.teamId,
-        userId: req.body.userId,
-        role: req.body.role,
-      },
+      data: { teamId, userId, role },
       include: { user: { select: { id: true, name: true, email: true, role: true } } },
     });
     res.status(201).json(created);
@@ -172,18 +185,45 @@ router.post("/:teamId/members", validate(TeamIdOnlyParams, "params"), validate(A
 });
 
 const RemoveMemberParams = z.object({ teamId: z.string().min(1), userId: z.string().min(1) });
-
-router.delete("/:teamId/members/:userId", validate(RemoveMemberParams, "params"), async (req, res, next) => {
-  try {
-    await prisma.teamMember.delete({
-      where: { teamId_userId: { teamId: req.params.teamId, userId: req.params.userId } },
-    });
-    res.status(204).send();
-  } catch (e) {
-    if (e?.code === "P2025") return next(new HttpError(404, "El usuario no es miembro de este equipo"));
-    next(e);
-  }
+const RemoveMemberBody = z.object({
+  byUserId: z.string().min(1), // NUEVO: quién ejecuta la acción
 });
+
+router.delete(
+  "/:teamId/members/:userId",
+  validate(RemoveMemberParams, "params"),
+  validate(RemoveMemberBody),
+  async (req, res, next) => {
+    try {
+      const { teamId, userId } = req.params;
+      const { byUserId } = req.body;
+
+      const actor = await prisma.user.findUnique({ where: { id: byUserId }, select: { id: true, role: true } });
+      if (!actor) throw new HttpError(404, "Usuario actor (byUserId) no encontrado");
+
+      const isAdmin = actor.role === "ADMIN";
+      const isSelfRemoval = byUserId === userId;
+
+      const actorMembership = await prisma.teamMember.findUnique({
+        where: { teamId_userId: { teamId, userId: byUserId } },
+        select: { role: true },
+      });
+      const isLeader = actorMembership?.role === "LIDER";
+
+      if (!isAdmin && !isLeader && !isSelfRemoval) {
+        throw new HttpError(403, "Solo líder/admin puede remover; un usuario solo puede retirarse a sí mismo");
+      }
+
+      await prisma.teamMember.delete({
+        where: { teamId_userId: { teamId, userId } },
+      });
+      res.status(204).send();
+    } catch (e) {
+      if (e?.code === "P2025") return next(new HttpError(404, "El usuario no es miembro de este equipo"));
+      next(e);
+    }
+  }
+);
 
 /* ========== TEAM SKILLS ========== */
 // GET /teams/:teamId/skills

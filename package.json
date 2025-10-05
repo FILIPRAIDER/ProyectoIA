@@ -12,8 +12,12 @@
   "dependencies": {
     "@prisma/client": "^5.18.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "express": "^4.19.2",
+    "imagekit": "^6.0.0",
+    "mailtrap": "^4.3.0",
     "morgan": "^1.10.0",
+    "resend": "^6.1.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {
