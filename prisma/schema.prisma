@@ -31,6 +31,7 @@ model User {
   profile         MemberProfile?
   certifications  Certification[]
   experiences     Experience[]
+  invitesSent     TeamInvite[]    @relation("InvitesByUser")
 }
 
 model Skill {
@@ -222,6 +223,7 @@ model TeamApplication {
   // Tip: si quieres evitar dos PENDING para el mismo par:
   // @@unique([projectId, teamId, status])
 }
+// === Enum de estado de invitaciones ===
 enum InviteStatus {
   PENDING
   ACCEPTED
@@ -229,24 +231,25 @@ enum InviteStatus {
   EXPIRED
 }
 
+// === Modelo TeamInvite (solo fragmento relevante) ===
 model TeamInvite {
-  id         String       @id @default(cuid())        // Prisma genera el cuid() (no DB)
+  id         String        @id @default(cuid())
   teamId     String
   email      String
-  role       TeamRole                                 // LIDER | MIEMBRO (ya existe)
-  token      String       @unique
-  status     InviteStatus  @default(PENDING)
-  invitedBy  String?
+  role       TeamRole      @default(MIEMBRO)
+  token      String        @unique
+  status     InviteStatus  @default(PENDING) // <-- Asegúrate de que sea ENUM, no String
+  invitedBy  String
   message    String?
   expiresAt  DateTime?
-  createdAt  DateTime      @default(now())
   decidedAt  DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
-  team       Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team       Team          @relation(fields: [teamId], references: [id])
+  invitedByUser User       @relation("InvitesByUser", fields: [invitedBy], references: [id])
 
-  @@index([teamId])
-  @@index([status])
-  @@index([expiresAt])
-  // Nota: el índice único parcial (teamId + lower(email)) WHERE status='PENDING'
-  // no se puede modelar en Prisma; lo creamos en la migración SQL manual.
+  @@index([teamId, email])
+  // recomendado para evitar duplicados PENDING por email en el mismo equipo:
+  // @@unique([teamId, email, status], name: "team_email_status_unique")
 }

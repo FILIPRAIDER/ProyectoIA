@@ -264,3 +264,26 @@ router.delete("/:userId/experiences/:expId", validate(ExpParams, "params"), asyn
     next(e);
   }
 });
+
+// NUEVO: Perfil + skills del usuario
+router.get("/:userId/profile/full", validate(UserIdParams, "params"), async (req, res, next) => {
+  try {
+    const [profile, skills] = await Promise.all([
+      prisma.memberProfile.findUnique({ where: { userId: req.params.userId } }),
+      prisma.userSkill.findMany({
+        where: { userId: req.params.userId },
+        include: { skill: true },
+        orderBy: { skill: { name: "asc" } },
+      }),
+    ]);
+
+    if (!profile) throw new HttpError(404, "Perfil no encontrado");
+
+    res.json({
+      profile,
+      skills, // [{ skill: { id, name }, level }]
+    });
+  } catch (e) {
+    next(e);
+  }
+});
