@@ -1,4 +1,3 @@
-// src/lib/imagekit.js
 import crypto from "crypto";
 import { IK_PUBLIC_KEY, IK_PRIVATE_KEY, IK_URL_ENDPOINT, IK_UPLOAD_FOLDER } from "../env.js";
 
@@ -20,7 +19,6 @@ export function getImageKitAuthParams() {
     publicKey: IK_PUBLIC_KEY,
     urlEndpoint: IK_URL_ENDPOINT,
     folder: IK_UPLOAD_FOLDER || "/certifications",
-    // El endpoint de subida (para el cliente/frontend)
     uploadApiEndpoint: "https://upload.imagekit.io/api/v1/files/upload",
   };
 }

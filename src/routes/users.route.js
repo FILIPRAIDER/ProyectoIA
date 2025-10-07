@@ -1,4 +1,5 @@
 import { Router } from "express";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { validate } from "../middleware/validate.js";
@@ -8,16 +9,31 @@ export const router = Router();
 
 // ============ USUARIOS ============
 
+const StrongPassword = z
+  .string()
+  .min(8, "La contraseña debe tener al menos 8 caracteres")
+  .max(72, "La contraseña no puede superar 72 caracteres")
+  .regex(/[A-Z]/, "Debe incluir al menos una letra mayúscula")
+  .regex(/[0-9]/, "Debe incluir al menos un número")
+  .regex(/[!@#$%^&*()_\-+={}\[\]|\\:;"'<>,.?/]/, "Debe incluir al menos un carácter especial");
+
 const CreateUserSchema = z.object({
   name: z.string().min(2, "Nombre muy corto"),
   email: z.string().email(),
-  role: z.enum(["EMPRESARIO", "ESTUDIANTE", "ADMIN"]).optional().default("ESTUDIANTE"),
+  role: z.enum(["EMPRESARIO", "ESTUDIANTE", "ADMIN", "LIDER"]).optional().default("ESTUDIANTE"),
+  password: StrongPassword,
 });
-
 router.post("/", validate(CreateUserSchema), async (req, res, next) => {
   try {
-    const user = await prisma.user.create({ data: req.body });
-    res.status(201).json(user);
+    const { name, email, role, password } = req.body;
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: { name, email, role, passwordHash, onboardingStep: "ACCOUNT" },
+    });
+
+    const { passwordHash: _, ...safe } = user;
+    res.status(201).json(safe);
   } catch (e) {
     if (e?.code === "P2002") {
       return next(new HttpError(409, "El email ya está registrado"));
@@ -35,6 +51,7 @@ router.get("/:id", validate(IdParams, "params"), async (req, res, next) => {
       include: {
         skills: { include: { skill: true } },
         teamMemberships: { include: { team: true } },
+        profile: true,
       },
     });
     if (!user) throw new HttpError(404, "Usuario no encontrado");
@@ -59,7 +76,6 @@ router.get("/:userId/skills", validate(UserIdParams, "params"), async (req, res,
     const userSkills = await prisma.userSkill.findMany({
       where: { userId: req.params.userId },
       include: { skill: true },
-      // sin createdAt; ordenamos por nombre de la skill
       orderBy: { skill: { name: "asc" } },
     });
     res.json(userSkills);
@@ -143,6 +159,37 @@ router.delete("/:userId/skills/:skillId", validate(UserSkillParams, "params"), a
     if (e?.code === "P2025") {
       return next(new HttpError(404, "Relación user-skill no encontrada"));
     }
+    next(e);
+  }
+});
+
+// ============ ONBOARDING (flujo por fases) ============
+
+const OnboardingBody = z.object({
+  step: z.enum(["ACCOUNT", "PROFILE", "OPTIONAL", "DONE"]),
+});
+
+router.patch("/:id/onboarding", validate(IdParams, "params"), validate(OnboardingBody), async (req, res, next) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { onboardingStep: true } });
+    if (!user) throw new HttpError(404, "Usuario no encontrado");
+
+    // Reglas simples de avance: solo avanzar hacia adelante
+    const order = ["ACCOUNT", "PROFILE", "OPTIONAL", "DONE"];
+    const currentIdx = order.indexOf(user.onboardingStep);
+    const nextIdx = order.indexOf(req.body.step);
+    if (nextIdx < currentIdx) {
+      throw new HttpError(400, `No puedes retroceder el onboarding (${user.onboardingStep} → ${req.body.step})`);
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: req.params.id },
+      data: { onboardingStep: req.body.step },
+      select: { id: true, onboardingStep: true },
+    });
+
+    res.json(updated);
+  } catch (e) {
     next(e);
   }
 });

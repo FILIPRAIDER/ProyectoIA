@@ -10,6 +10,7 @@ datasource db {
 enum Role {
   EMPRESARIO
   ESTUDIANTE
+  LIDER       
   ADMIN
 }
 
@@ -18,11 +19,28 @@ enum TeamRole {
   MIEMBRO
 }
 
+enum IdentityType {
+  CC
+  TI
+  CE
+  PEP
+  PASAPORTE
+  NIT
+}
+
+enum OnboardingStep {
+  ACCOUNT
+  PROFILE
+  OPTIONAL
+  DONE
+}
+
 model User {
   id              String          @id @default(cuid())
   name            String
   email           String          @unique
   role            Role            @default(ESTUDIANTE)
+  avatarUrl String?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   skills          UserSkill[]
@@ -32,6 +50,41 @@ model User {
   certifications  Certification[]
   experiences     Experience[]
   invitesSent     TeamInvite[]    @relation("InvitesByUser")
+
+  passwordHash    String?         @map("password_hash")
+
+  // NUEVO: flujo por fases
+  onboardingStep  OnboardingStep  @default(ACCOUNT)
+}
+model MemberProfile {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  headline     String?
+  bio          String?
+  seniority    String?
+  location     String?
+  availability Int?
+  stack        String?
+  sector       String?
+
+  identityType   IdentityType?
+  documentNumber String? @unique
+  phone          String?
+  birthdate      DateTime?
+
+  // NUEVO: teléfono normalizado
+  phoneE164      String?   // +573001112233
+  phoneCountry   String?   // ISO-3166 alpha-2: "CO", "US", etc.
+
+  avatarUrl      String?
+  avatarProvider String?
+  avatarKey      String?
+  avatarType     String?
+  avatarSize     Int?
+  avatarWidth    Int?
+  avatarHeight   Int?
+
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Skill {
@@ -92,18 +145,6 @@ model TeamSkill {
   @@unique([teamId, skillId])
 }
 
-model MemberProfile {
-  id           String  @id @default(cuid())
-  userId       String  @unique
-  headline     String? // e.g. "Desarrollador Fullstack | React + Node"
-  bio          String?
-  seniority    String? // e.g. "Junior", "Semi Senior", "Senior"
-  location     String? // ciudad/país
-  availability Int? // horas/semana disponibles
-  stack        String? // stack preferido: "React, Node, Postgres"
-  sector       String? // sector de interés: "Agro, EduTech, Salud"
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
 
 model Certification {
   id           String    @id @default(cuid())

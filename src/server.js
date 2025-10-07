@@ -13,6 +13,8 @@ import { router as projectsRouter } from "./routes/projects.route.js";
 import { router as matchingRouter } from "./routes/matching.route.js";
 import { router as projectApplicationsRouter } from "./routes/projectApplications.route.js";
 import { router as teamInvitesRouter } from "./routes/teamInvites.route.js";
+import { router as authRoutes } from "./routes/auth.route.js";
+import { router as metaRouter } from "./routes/meta.route.js";
 import { notFoundHandler, errorHandler } from "./utils/http-errors.js";
 const { PORT = 4001 } = process.env;
 
@@ -37,6 +39,10 @@ app.use("/matching", matchingRouter);
 app.use("/projects", projectApplicationsRouter);
 
 app.use("/teams", teamInvitesRouter);
+
+app.use("/auth", authRoutes);
+
+app.use("/meta", metaRouter);
 
 
 app.use(notFoundHandler);
