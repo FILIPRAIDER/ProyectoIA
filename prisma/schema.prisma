@@ -113,6 +113,7 @@ model UserSkill {
 model Team {
   id           String            @id @default(cuid())
   name         String
+  description  String?           // descripción del equipo
   city         String?
   area         String? // ya agregado
   createdAt    DateTime          @default(now())

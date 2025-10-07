@@ -36,6 +36,7 @@ router.post("/", validate(CreateTeamSchema), async (req, res, next) => {
 const TeamIdParams = z.object({ id: z.string().min(1) });
 const UpdateTeamBody = z.object({
   name: z.string().trim().min(2).optional(),
+  description: z.string().trim().max(500).optional().nullable(),
   city: z.string().trim().min(2).optional().nullable(),
   area: z.string().trim().min(2).max(50).optional().nullable(),
 });
@@ -47,10 +48,16 @@ router.patch(
   validate(UpdateTeamBody),
   async (req, res, next) => {
     try {
+      // Validar nombre no vacío si se está actualizando
+      if ('name' in req.body && !req.body.name?.trim()) {
+        throw new HttpError(400, 'El nombre no puede estar vacío');
+      }
+      
       const updated = await prisma.team.update({
         where: { id: req.params.id },
         data: {
           ...("name" in req.body ? { name: req.body.name } : {}),
+          ...("description" in req.body ? { description: req.body.description ?? null } : {}),
           ...("city" in req.body ? { city: req.body.city ?? null } : {}),
           ...("area" in req.body ? { area: req.body.area ?? null } : {}),
         },
@@ -72,7 +79,7 @@ router.get("/:id", validate(TeamIdParams, "params"), async (req, res, next) => {
       include: {
         members: {
           include: {
-            user: { select: { id: true, name: true, email: true, role: true } },
+            user: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } },
           },
           orderBy: { role: "asc" },
         },
@@ -157,13 +164,14 @@ router.get(
               name: true,
               email: true,
               role: true,
+              avatarUrl: true,
               skills: {
                 include: { skill: true },
                 orderBy: { skill: { name: "asc" } },
               },
             },
           }
-        : { select: { id: true, name: true, email: true, role: true } };
+        : { select: { id: true, name: true, email: true, role: true, avatarUrl: true } };
 
       const members = await prisma.teamMember.findMany({
         where: { teamId: req.params.teamId },
@@ -209,7 +217,7 @@ router.post(
           role: req.body.role,
         },
         include: {
-          user: { select: { id: true, name: true, email: true, role: true } },
+          user: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } },
         },
       });
       res.status(201).json(created);

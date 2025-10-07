@@ -49,13 +49,25 @@ router.get("/:id", validate(IdParams, "params"), async (req, res, next) => {
     const user = await prisma.user.findUnique({
       where: { id: req.params.id },
       include: {
-        skills: { include: { skill: true } },
-        teamMemberships: { include: { team: true } },
         profile: true,
+        experiences: {
+          orderBy: { startDate: 'desc' }
+        },
+        certifications: {
+          orderBy: { issueDate: 'desc' }
+        },
+        skills: { 
+          include: { skill: true },
+          orderBy: { level: 'desc' }
+        },
+        teamMemberships: { include: { team: true } },
       },
     });
     if (!user) throw new HttpError(404, "Usuario no encontrado");
-    res.json(user);
+    
+    // Remover campos sensibles antes de enviar
+    const { passwordHash, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
   } catch (e) {
     next(e);
   }
