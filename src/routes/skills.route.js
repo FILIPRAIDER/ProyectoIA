@@ -26,12 +26,79 @@ router.post("/", validate(CreateSkillSchema), async (req, res, next) => {
 });
 
 // ---------- GET /skills ----------
-router.get("/", async (_req, res, next) => {
+// Soporta búsqueda, paginación y ordenamiento
+router.get("/", async (req, res, next) => {
   try {
-    const skills = await prisma.skill.findMany({
-      orderBy: { name: "asc" },
+    const {
+      search = "",
+      page = "1",
+      limit = "50",
+      orderBy = "name",
+      order = "asc",
+    } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page, 10));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
+    const skip = (pageNum - 1) * limitNum;
+
+    // Construir filtro de búsqueda
+    const where = search
+      ? {
+          name: {
+            contains: search,
+            mode: "insensitive", // Case-insensitive search
+          },
+        }
+      : {};
+
+    // Obtener skills con filtros
+    const [skills, total] = await Promise.all([
+      prisma.skill.findMany({
+        where,
+        orderBy: { [orderBy]: order },
+        skip,
+        take: limitNum,
+        select: {
+          id: true,
+          name: true,
+          createdAt: true,
+          _count: {
+            select: {
+              users: true,
+              teams: true,
+              projects: true,
+            },
+          },
+        },
+      }),
+      prisma.skill.count({ where }),
+    ]);
+
+    // Formatear respuesta con estadísticas
+    const formattedSkills = skills.map((skill) => ({
+      id: skill.id,
+      name: skill.name,
+      createdAt: skill.createdAt,
+      stats: {
+        usersCount: skill._count.users,
+        teamsCount: skill._count.teams,
+        projectsCount: skill._count.projects,
+        totalUsage: skill._count.users + skill._count.teams + skill._count.projects,
+      },
+    }));
+
+    res.json({
+      ok: true,
+      skills: formattedSkills,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+        hasMore: skip + limitNum < total,
+      },
+      search: search || null,
     });
-    res.json(skills);
   } catch (e) {
     next(e);
   }
