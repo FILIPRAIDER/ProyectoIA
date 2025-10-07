@@ -13,12 +13,6 @@ export const prisma =
   new PrismaClient({
     log: ["error", "warn"],
     datasources: { db: { url: DATABASE_URL } },
-    // Configuración de connection pooling para Neon
-    connectionLimit: 10, // Límite de conexiones
-    pool: {
-      timeout: 20, // Timeout en segundos
-      idleTimeout: 10, // Cerrar conexiones inactivas después de 10s
-    },
   });
 
 if (!globalForPrisma.__prisma) globalForPrisma.__prisma = prisma;
