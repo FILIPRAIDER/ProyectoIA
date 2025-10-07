@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: proyectoia-backend
+    runtime: node
+    region: ohio
+    plan: starter
+    buildCommand: npm install && npx prisma generate
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4001
+      - key: DATABASE_URL
+        sync: false
+      - key: IMAGEKIT_PUBLIC_KEY
+        sync: false
+      - key: IMAGEKIT_PRIVATE_KEY
+        sync: false
+      - key: IMAGEKIT_URL_ENDPOINT
+        sync: false
+      - key: IMAGEKIT_UPLOAD_FOLDER
+        sync: false
+      - key: MAIL_PROVIDER
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        sync: false
+      - key: RESEND_DEV_FORCE_TO
+        sync: false
+      - key: API_BASE_URL
+        sync: false
+      - key: APP_BASE_URL
+        sync: false

@@ -2,6 +2,12 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
+
+// ✨ NUEVO: Validar env antes de iniciar
+import { validateEnv } from "./utils/envValidator.js";
+validateEnv();
+
+// Rutas
 import { router as healthRouter } from "./routes/health.route.js";
 import { router as usersRouter } from "./routes/users.route.js";
 import { router as skillsRouter } from "./routes/skills.route.js";
@@ -15,14 +21,45 @@ import { router as projectApplicationsRouter } from "./routes/projectApplication
 import { router as teamInvitesRouter } from "./routes/teamInvites.route.js";
 import { router as authRoutes } from "./routes/auth.route.js";
 import { router as metaRouter } from "./routes/meta.route.js";
-import { notFoundHandler, errorHandler } from "./utils/http-errors.js";
-const { PORT = 4001 } = process.env;
+
+// ✨ MEJORADO: Usar error handler mejorado
+import { notFoundHandler, errorHandler } from "./middleware/errorHandler.js";
+
+const { PORT = 4001, NODE_ENV = "development", APP_BASE_URL } = process.env;
 
 const app = express();
 
-app.use(cors());
+// ✨ MEJORADO: CORS configurado según entorno
+const corsOptions =
+  NODE_ENV === "production"
+    ? {
+        origin: function (origin, callback) {
+          // Permitir requests sin origin (mobile apps, Postman, etc.)
+          if (!origin) return callback(null, true);
+
+          const allowedOrigins = [
+            APP_BASE_URL,
+            process.env.FRONTEND_URL, // URL de Vercel
+            // Agregar más dominios si es necesario
+          ].filter(Boolean);
+
+          if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+          } else {
+            callback(new Error("No permitido por CORS"));
+          }
+        },
+        credentials: true,
+        optionsSuccessStatus: 200,
+      }
+    : {
+        // En desarrollo permite todo
+        origin: "*",
+      };
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: "1mb" }));
-app.use(morgan("dev"));
+app.use(morgan(NODE_ENV === "production" ? "combined" : "dev"));
 
 app.use("/health", healthRouter);
 app.use("/users", usersRouter);
@@ -49,5 +86,22 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 app.listen(Number(PORT), () => {
-  console.log(`core-api (Express) escuchando en http://localhost:${PORT}`);
+  console.log(`\n${"=".repeat(60)}`);
+  console.log(`🚀 core-api (Express) iniciado correctamente`);
+  console.log(`${"=".repeat(60)}`);
+  console.log(`   🌐 URL: http://localhost:${PORT}`);
+  console.log(`   📍 Entorno: ${NODE_ENV}`);
+  console.log(`   ⏰ Hora: ${new Date().toLocaleString("es-CO")}`);
+  console.log(`${"=".repeat(60)}\n`);
+});
+
+// ✨ NUEVO: Manejo de señales para graceful shutdown
+process.on("SIGTERM", () => {
+  console.log("\n👋 SIGTERM recibido, cerrando servidor...");
+  process.exit(0);
+});
+
+process.on("SIGINT", () => {
+  console.log("\n👋 SIGINT recibido (Ctrl+C), cerrando servidor...");
+  process.exit(0);
 });
