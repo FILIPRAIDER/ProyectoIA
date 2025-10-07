@@ -17,6 +17,7 @@ const toInt = (v, d) => {
 
 /* ====================== Base ====================== */
 export const DATABASE_URL = ensureSSL(process.env.DATABASE_URL);
+export const DIRECT_DATABASE_URL = ensureSSL(process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL);
 export const PORT = process.env.PORT || "4001";
 
 /* ==================== ImageKit ==================== */

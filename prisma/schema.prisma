@@ -3,14 +3,15 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 enum Role {
   EMPRESARIO
   ESTUDIANTE
-  LIDER       
+  LIDER
   ADMIN
 }
 
@@ -40,7 +41,7 @@ model User {
   name            String
   email           String          @unique
   role            Role            @default(ESTUDIANTE)
-  avatarUrl String?
+  avatarUrl       String?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   skills          UserSkill[]
@@ -51,11 +52,12 @@ model User {
   experiences     Experience[]
   invitesSent     TeamInvite[]    @relation("InvitesByUser")
 
-  passwordHash    String?         @map("password_hash")
+  passwordHash String? @map("password_hash")
 
   // NUEVO: flujo por fases
-  onboardingStep  OnboardingStep  @default(ACCOUNT)
+  onboardingStep OnboardingStep @default(ACCOUNT)
 }
+
 model MemberProfile {
   id           String  @id @default(cuid())
   userId       String  @unique
@@ -68,13 +70,13 @@ model MemberProfile {
   sector       String?
 
   identityType   IdentityType?
-  documentNumber String? @unique
+  documentNumber String?       @unique
   phone          String?
   birthdate      DateTime?
 
   // NUEVO: teléfono normalizado
-  phoneE164      String?   // +573001112233
-  phoneCountry   String?   // ISO-3166 alpha-2: "CO", "US", etc.
+  phoneE164    String? // +573001112233
+  phoneCountry String? // ISO-3166 alpha-2: "CO", "US", etc.
 
   avatarUrl      String?
   avatarProvider String?
@@ -84,7 +86,7 @@ model MemberProfile {
   avatarWidth    Int?
   avatarHeight   Int?
 
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Skill {
@@ -109,17 +111,17 @@ model UserSkill {
 }
 
 model Team {
-  id          String           @id @default(cuid())
-  name        String
-  city        String?
-  area        String? // ya agregado
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  members     TeamMember[]
-  skills      TeamSkill[]
-  assignments TeamAssignment[]
+  id           String            @id @default(cuid())
+  name         String
+  city         String?
+  area         String? // ya agregado
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  members      TeamMember[]
+  skills       TeamSkill[]
+  assignments  TeamAssignment[]
   applications TeamApplication[] // <-- Add this line
-  invites     TeamInvite[] // <-- Add this line for relation
+  invites      TeamInvite[] // <-- Add this line for relation
 
   @@index([city, area])
 }
@@ -144,7 +146,6 @@ model TeamSkill {
 
   @@unique([teamId, skillId])
 }
-
 
 model Certification {
   id           String    @id @default(cuid())
@@ -193,21 +194,21 @@ model Company {
 }
 
 model Project {
-  id          String           @id @default(cuid())
-  companyId   String
-  title       String
-  description String?
-  city        String?
-  area        String?
-  status      String           @default("OPEN") // OPEN | IN_PROGRESS | DONE | CANCELED
-  budget      Decimal?
-  startDate   DateTime?
-  endDate     DateTime?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  company     Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  skills      ProjectSkill[]
-  assignments TeamAssignment[]
+  id           String            @id @default(cuid())
+  companyId    String
+  title        String
+  description  String?
+  city         String?
+  area         String?
+  status       String            @default("OPEN") // OPEN | IN_PROGRESS | DONE | CANCELED
+  budget       Decimal?
+  startDate    DateTime?
+  endDate      DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  company      Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  skills       ProjectSkill[]
+  assignments  TeamAssignment[]
   applications TeamApplication[] // <-- Add this line
 
   @@index([companyId])
@@ -247,23 +248,24 @@ enum ApplicationStatus {
 }
 
 model TeamApplication {
-  id         String            @id @default(cuid())
-  projectId  String
-  teamId     String
-  status     ApplicationStatus @default(PENDING)
-  message    String?
-  createdAt  DateTime          @default(now())
-  decidedAt  DateTime?
-  decidedBy  String?
+  id        String            @id @default(cuid())
+  projectId String
+  teamId    String
+  status    ApplicationStatus @default(PENDING)
+  message   String?
+  createdAt DateTime          @default(now())
+  decidedAt DateTime?
+  decidedBy String?
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   team    Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  // Tip: si quieres evitar dos PENDING para el mismo par:
+  // @@unique([projectId, teamId, status])
 
   @@index([projectId])
   @@index([teamId])
-  // Tip: si quieres evitar dos PENDING para el mismo par:
-  // @@unique([projectId, teamId, status])
 }
+
 // === Enum de estado de invitaciones ===
 enum InviteStatus {
   PENDING
@@ -274,23 +276,23 @@ enum InviteStatus {
 
 // === Modelo TeamInvite (solo fragmento relevante) ===
 model TeamInvite {
-  id         String        @id @default(cuid())
-  teamId     String
-  email      String
-  role       TeamRole      @default(MIEMBRO)
-  token      String        @unique
-  status     InviteStatus  @default(PENDING) // <-- Asegúrate de que sea ENUM, no String
-  invitedBy  String
-  message    String?
-  expiresAt  DateTime?
-  decidedAt  DateTime?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id        String       @id @default(cuid())
+  teamId    String
+  email     String
+  role      TeamRole     @default(MIEMBRO)
+  token     String       @unique
+  status    InviteStatus @default(PENDING) // <-- Asegúrate de que sea ENUM, no String
+  invitedBy String
+  message   String?
+  expiresAt DateTime?
+  decidedAt DateTime?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
-  team       Team          @relation(fields: [teamId], references: [id])
-  invitedByUser User       @relation("InvitesByUser", fields: [invitedBy], references: [id])
-
-  @@index([teamId, email])
+  team          Team @relation(fields: [teamId], references: [id])
+  invitedByUser User @relation("InvitesByUser", fields: [invitedBy], references: [id])
   // recomendado para evitar duplicados PENDING por email en el mismo equipo:
   // @@unique([teamId, email, status], name: "team_email_status_unique")
+
+  @@index([teamId, email])
 }

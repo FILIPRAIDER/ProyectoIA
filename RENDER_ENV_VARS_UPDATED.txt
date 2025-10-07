@@ -1,0 +1,47 @@
+# ========================================
+# VARIABLES DE ENTORNO ACTUALIZADAS PARA RENDER.COM
+# ========================================
+# ⚠️ IMPORTANTE: Agregar AMBAS URLs de base de datos
+# ========================================
+
+# 🔗 DATABASE (Neon)
+# URL Pooled - Para la aplicación (usa -pooler)
+DATABASE_URL=postgresql://neondb_owner:npg_sndjGQl23JRK@ep-morning-forest-aezf0ccr-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&connection_limit=10&pool_timeout=20
+
+# URL Directa - Para migraciones (sin -pooler)
+DIRECT_DATABASE_URL=postgresql://neondb_owner:npg_sndjGQl23JRK@ep-morning-forest-aezf0ccr.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require
+
+# 🌐 PUERTO (Render lo asigna automáticamente)
+PORT=4001
+
+# 🖼️ IMAGEKIT (Servicio de imágenes)
+IMAGEKIT_PUBLIC_KEY=public_wK6Hsubk2bju+DTe/tLtP0/IF7E=
+IMAGEKIT_PRIVATE_KEY=private_fA7LGg1gV8eDEr4jnjm+8mGFGTY=
+IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/n9g1xv1xl
+IMAGEKIT_UPLOAD_FOLDER=/certifications
+
+# 📧 EMAIL (Resend)
+MAIL_PROVIDER=resend
+RESEND_API_KEY=re_436Tv277_AftgvvLLPEcHDDYfUXBQPN8s
+RESEND_FROM=Acme <onboarding@resend.dev>
+RESEND_DEV_FORCE_TO=filipraider123@gmail.com
+
+# 🌍 URLs (ACTUALIZAR DESPUÉS DEL DEPLOY)
+API_BASE_URL=https://proyectoia-backend.onrender.com
+APP_BASE_URL=https://tu-frontend.vercel.app
+
+# 🔧 NODE_ENV
+NODE_ENV=production
+
+# ========================================
+# 📋 CHECKLIST DE IMPLEMENTACIÓN:
+# ========================================
+# ✅ 1. Copiar AMBAS URLs de base de datos (DATABASE_URL y DIRECT_DATABASE_URL)
+# ✅ 2. Verificar que DATABASE_URL use el endpoint -pooler
+# ✅ 3. Verificar que DIRECT_DATABASE_URL NO use -pooler
+# ✅ 4. Agregar parámetros connection_limit y pool_timeout a DATABASE_URL
+# ✅ 5. Hacer commit y push de los cambios
+# ✅ 6. Esperar el redeploy en Render
+# ✅ 7. Verificar logs: NO debe aparecer error E57P01
+# ========================================
+
