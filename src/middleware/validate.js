@@ -8,9 +8,11 @@ export const validate = (schema, where = "body") => {
 
     const parsed = schema.safeParse(source);
     if (!parsed.success) {
-      console.error("❌ Validación fallida en:", where);
-      console.error("📦 Data recibida:", JSON.stringify(source, null, 2));
-      console.error("🔍 Errores:", JSON.stringify(parsed.error.issues, null, 2));
+      process.stderr.write("\n" + "!".repeat(60) + "\n");
+      process.stderr.write("❌ VALIDACIÓN FALLIDA en: " + where + "\n");
+      process.stderr.write("📦 Data recibida:\n" + JSON.stringify(source, null, 2) + "\n");
+      process.stderr.write("🔍 Errores:\n" + JSON.stringify(parsed.error.issues, null, 2) + "\n");
+      process.stderr.write("!".repeat(60) + "\n\n");
       
       return res.status(400).json({
         error: {

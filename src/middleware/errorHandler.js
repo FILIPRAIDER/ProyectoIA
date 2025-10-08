@@ -222,12 +222,18 @@ function handlePrismaError(error) {
       line.includes("Missing")
     ) || lines[0];
     
+    // LOG COMPLETO para debugging (siempre en producción temporalmente)
+    console.error("❌❌❌ PrismaClientValidationError detectado ❌❌❌");
+    console.error("Full error message:", fullMessage);
+    console.error("Stack:", error.stack);
+    
     return new HttpError(
       400,
       "Error de validación en la consulta a base de datos",
       { 
         details: errorLine,
-        fullError: process.env.NODE_ENV !== "production" ? fullMessage : undefined
+        fullError: fullMessage, // Mostrar siempre para debugging
+        stack: error.stack?.split("\n").slice(0, 5).join("\n") // Primeras 5 líneas del stack
       }
     );
   }

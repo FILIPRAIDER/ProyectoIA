@@ -105,10 +105,13 @@ router.post(
   "/:teamId/invites",
   // Middleware de debugging ANTES de validación
   (req, res, next) => {
-    console.log("🚀 POST /teams/:teamId/invites recibido");
-    console.log("📦 req.params:", req.params);
-    console.log("📦 req.body:", JSON.stringify(req.body, null, 2));
-    console.log("📦 req.query:", req.query);
+    // Forzar logs inmediatos con process.stdout.write
+    process.stdout.write("\n" + "=".repeat(60) + "\n");
+    process.stdout.write("🚀 POST /teams/:teamId/invites RECIBIDO\n");
+    process.stdout.write("📦 req.params: " + JSON.stringify(req.params) + "\n");
+    process.stdout.write("📦 req.body: " + JSON.stringify(req.body, null, 2) + "\n");
+    process.stdout.write("📦 req.query: " + JSON.stringify(req.query) + "\n");
+    process.stdout.write("=".repeat(60) + "\n\n");
     next();
   },
   validate(TeamIdParams, "params"),
