@@ -64,4 +64,88 @@ router.get("/countries", async (_req, res, next) => {
   }
 });
 
+/* ============================================================
+   GET /meta/sectors
+   Retorna lista de sectores predefinidos
+   Sincronizada con frontend: src/constants/sectors.ts
+============================================================ */
+const SECTORS = [
+  "Tecnología",
+  "Finanzas",
+  "Salud",
+  "Educación",
+  "E-commerce",
+  "Marketing",
+  "Retail",
+  "Manufactura",
+  "Logística",
+  "Telecomunicaciones",
+  "Energía",
+  "Construcción",
+  "Agricultura",
+  "Turismo",
+  "Entretenimiento",
+  "Medios",
+  "Consultoría",
+  "Legal",
+  "Inmobiliaria",
+  "Automotriz",
+  "Alimentación",
+  "Transporte",
+  "Gobierno",
+  "ONGs",
+  "Startup",
+  "Otro",
+];
+
+router.get("/sectors", async (_req, res, next) => {
+  try {
+    res.json({
+      ok: true,
+      sectors: SECTORS.map((name, index) => ({
+        id: `sector_${index + 1}`,
+        name,
+      })),
+      total: SECTORS.length,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/* ============================================================
+   GET /meta/stacks
+   Retorna lista de stacks tecnológicos comunes (opcional)
+   Para ayudar a usuarios a rellenar el campo stack
+============================================================ */
+const COMMON_STACKS = [
+  "MERN (MongoDB, Express, React, Node.js)",
+  "MEAN (MongoDB, Express, Angular, Node.js)",
+  "LAMP (Linux, Apache, MySQL, PHP)",
+  "JAMstack (JavaScript, APIs, Markup)",
+  "Python + Django + PostgreSQL",
+  "Ruby on Rails + PostgreSQL",
+  ".NET Core + SQL Server",
+  "Java Spring Boot + MySQL",
+  "Next.js + TypeScript + Prisma",
+  "Vue.js + Nuxt + Firebase",
+  "Flutter + Firebase",
+  "React Native + Expo",
+  "Full Stack JavaScript",
+  "DevOps (Docker, Kubernetes, CI/CD)",
+  "Cloud Native (AWS/Azure/GCP)",
+];
+
+router.get("/stacks", async (_req, res, next) => {
+  try {
+    res.json({
+      ok: true,
+      stacks: COMMON_STACKS,
+      total: COMMON_STACKS.length,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
 export default router;

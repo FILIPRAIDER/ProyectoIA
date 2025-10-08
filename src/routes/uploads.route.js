@@ -23,7 +23,9 @@ const imagekit = new ImageKit({
   urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
 });
 
-// NUEVO ENDPOINT (agregar después de /avatar/url)
+// POST /uploads/users/:userId/avatar
+// Subir o reemplazar avatar del usuario
+// Si ya tiene avatar, elimina el anterior de ImageKit
 router.post(
   "/users/:userId/avatar",
   upload.single("file"),
@@ -34,14 +36,39 @@ router.post(
 
       if (!file) throw new HttpError(400, "No se recibió ningún archivo");
 
-      // Verificar usuario existe
+      // Validar tipo de archivo
+      const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+      if (!allowedTypes.includes(file.mimetype)) {
+        throw new HttpError(400, "Tipo de archivo no permitido. Solo imágenes (JPG, PNG, GIF, WebP)");
+      }
+
+      // Verificar usuario existe y obtener avatar actual
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true },
+        select: { 
+          id: true, 
+          avatarUrl: true,
+          profile: {
+            select: {
+              avatarKey: true, // ImageKit fileId
+            }
+          }
+        },
       });
       if (!user) throw new HttpError(404, "Usuario no encontrado");
 
-      // Subir a ImageKit
+      // Si el usuario ya tiene un avatar, eliminarlo de ImageKit
+      if (user.profile?.avatarKey) {
+        try {
+          await imagekit.deleteFile(user.profile.avatarKey);
+          console.log(`✅ Avatar anterior eliminado de ImageKit: ${user.profile.avatarKey}`);
+        } catch (deleteError) {
+          console.warn("⚠️ No se pudo eliminar el avatar anterior de ImageKit:", deleteError.message);
+          // Continuar de todas formas - no bloqueamos la subida
+        }
+      }
+
+      // Subir nueva imagen a ImageKit
       const uploadResponse = await imagekit.upload({
         file: file.buffer.toString("base64"),
         fileName: `avatar_${userId}_${Date.now()}.${file.originalname.split(".").pop()}`,
@@ -50,16 +77,46 @@ router.post(
         tags: [`user:${userId}`, "avatar"],
       });
 
-      // Actualizar en DB
+      // Actualizar en DB (tanto User como MemberProfile)
       await prisma.user.update({
         where: { id: userId },
-        data: { avatarUrl: uploadResponse.url },
+        data: { 
+          avatarUrl: uploadResponse.url,
+          profile: {
+            upsert: {
+              create: {
+                avatarUrl: uploadResponse.url,
+                avatarProvider: "imagekit",
+                avatarKey: uploadResponse.fileId,
+                avatarType: file.mimetype,
+                avatarSize: file.size,
+                avatarWidth: uploadResponse.width || null,
+                avatarHeight: uploadResponse.height || null,
+              },
+              update: {
+                avatarUrl: uploadResponse.url,
+                avatarProvider: "imagekit",
+                avatarKey: uploadResponse.fileId,
+                avatarType: file.mimetype,
+                avatarSize: file.size,
+                avatarWidth: uploadResponse.width || null,
+                avatarHeight: uploadResponse.height || null,
+              }
+            }
+          }
+        },
       });
 
+      console.log(`✅ Avatar actualizado para usuario ${userId}`);
+
       res.json({
+        ok: true,
         success: true,
         url: uploadResponse.url,
-        message: "Avatar actualizado correctamente",
+        fileId: uploadResponse.fileId,
+        message: user.avatarUrl 
+          ? "Avatar reemplazado correctamente" 
+          : "Avatar subido correctamente",
       });
     } catch (error) {
       console.error("❌ Error uploading avatar:", error);
