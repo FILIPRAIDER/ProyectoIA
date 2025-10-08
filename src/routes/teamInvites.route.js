@@ -158,6 +158,18 @@ router.post(
       const token = generateToken();
       const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
 
+      // Log del payload antes de crear (para debugging)
+      console.log("📝 Creando invitación con data:", {
+        teamId,
+        email: email.toLowerCase(),
+        role,
+        token: token.substring(0, 10) + "...",
+        status: "PENDING",
+        invitedBy: byUserId,
+        hasMessage: !!message,
+        expiresAt,
+      });
+
       const invite = await prisma.teamInvite.create({
         data: {
           teamId,

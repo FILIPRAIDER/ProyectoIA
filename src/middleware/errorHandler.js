@@ -210,10 +210,25 @@ function handlePrismaError(error) {
 
   // Errores de validación
   if (error instanceof Prisma.PrismaClientValidationError) {
+    // Extraer mensaje más descriptivo del error de Prisma
+    const fullMessage = error.message;
+    const lines = fullMessage.split("\n").filter(line => line.trim());
+    
+    // Buscar la línea con el error específico
+    const errorLine = lines.find(line => 
+      line.includes("Argument") || 
+      line.includes("Invalid") ||
+      line.includes("Unknown") ||
+      line.includes("Missing")
+    ) || lines[0];
+    
     return new HttpError(
       400,
       "Error de validación en la consulta a base de datos",
-      { details: error.message.split("\n")[0] }
+      { 
+        details: errorLine,
+        fullError: process.env.NODE_ENV !== "production" ? fullMessage : undefined
+      }
     );
   }
 
