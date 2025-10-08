@@ -19,7 +19,7 @@ const CreateInviteBody = z.object({
   message: z.string().max(500).optional(),
   expiresInDays: z.coerce.number().int().min(1).max(60).optional().default(7),
   target: z.enum(["frontend", "backend"]).optional().default("frontend"),
-});
+}).strict(); // 🛡️ Rechazar campos extra del frontend
 
 const ListInvitesQuery = z.object({
   status: z.enum(["PENDING", "ACCEPTED", "CANCELED", "EXPIRED"]).optional(),
@@ -132,11 +132,29 @@ router.post(
   async (req, res, next) => {
     try {
       const { teamId } = req.validated?.params || req.params;
-      let { email, role, byUserId, message, expiresInDays, target } = req.validated?.body || req.body;
-      const debug = req.query?.debug === "1";
-
+      
+      // 🛡️ FILTRADO EXPLÍCITO: Solo extraer los campos que necesitamos
+      // Esto previene que campos extra (como expiresAt mal formateado) causen errores
+      const bodyData = req.validated?.body || req.body;
+      const email = bodyData.email;
+      const role = bodyData.role || "MIEMBRO";
+      const byUserId = bodyData.byUserId;
+      const message = bodyData.message;
+      const target = bodyData.target || "frontend";
+      
       // ✅ DEFENSA: Garantizar que expiresInDays NUNCA sea undefined/null/NaN
-      expiresInDays = expiresInDays || 7;
+      // Si viene del frontend, puede ser string, así que lo convertimos
+      let expiresInDays = bodyData.expiresInDays;
+      if (expiresInDays) {
+        expiresInDays = parseInt(expiresInDays, 10);
+        if (isNaN(expiresInDays) || expiresInDays < 1 || expiresInDays > 60) {
+          expiresInDays = 7; // valor por defecto si es inválido
+        }
+      } else {
+        expiresInDays = 7; // valor por defecto
+      }
+      
+      const debug = req.query?.debug === "1";
 
       // Log para confirmar que expiresInDays tiene valor
       console.log("✅ Valores extraídos del body validado:");
@@ -222,9 +240,22 @@ router.post(
       }
       
       console.log("✅ [4/5] Token y fecha generados correctamente");
+      console.log("📅 expiresAt details:");
+      console.log("  - Value:", expiresAt);
+      console.log("  - Type:", typeof expiresAt);
+      console.log("  - Is Date?:", expiresAt instanceof Date);
+      console.log("  - Is Valid?:", !isNaN(expiresAt.getTime()));
+      console.log("  - ISO String:", expiresAt.toISOString());
+
+      // 🛡️ VALIDACIÓN FINAL: Asegurarnos de que expiresAt es una fecha válida
+      const finalExpiresAt = new Date(expiresAt);
+      if (isNaN(finalExpiresAt.getTime())) {
+        console.error("❌ CRÍTICO: expiresAt inválido después de conversión");
+        throw new HttpError(500, "Error interno: Fecha de expiración inválida");
+      }
 
       // Log del payload antes de crear (para debugging)
-      console.log("� [5/5] Creando invitación en base de datos...");
+      console.log("🗄️ [5/5] Creando invitación en base de datos...");
       console.log("📝 Data a insertar:", {
         teamId,
         email: email.toLowerCase(),
@@ -233,7 +264,7 @@ router.post(
         status: "PENDING",
         invitedBy: byUserId,
         hasMessage: !!message,
-        expiresAt,
+        expiresAt: finalExpiresAt.toISOString(),
       });
 
       const invite = await prisma.teamInvite.create({
@@ -245,7 +276,7 @@ router.post(
           status: "PENDING",
           invitedBy: byUserId,
           message: message ?? null,
-          expiresAt,
+          expiresAt: finalExpiresAt,
         },
       });
 
@@ -310,6 +341,25 @@ router.post(
       });
     } catch (e) {
       // ✨ MEJORADO: Manejo específico de errores de Prisma
+      
+      // 🛡️ Error de validación de Prisma (PrismaClientValidationError)
+      if (e?.name === "PrismaClientValidationError" || e?.constructor?.name === "PrismaClientValidationError") {
+        console.error("❌❌❌ PrismaClientValidationError detectado ❌❌❌");
+        console.error("Full error message:", e.message);
+        console.error("Stack:", e.stack);
+        
+        // Si el error menciona "Invalid Date" o "expiresAt"
+        if (e.message?.includes("Invalid Date") || e.message?.includes("expiresAt")) {
+          return next(new HttpError(400, "Error en formato de fecha. Por favor intenta de nuevo."));
+        }
+        
+        return next(new HttpError(400, "Error de validación en la consulta a base de datos", {
+          details: e.message?.split("\n")[0] || "Error de validación",
+          fullError: e.message,
+          stack: e.stack
+        }));
+      }
+      
       if (e?.code === "P2002") {
         return next(new HttpError(409, "Ya existe una invitación PENDING para ese email en este equipo"));
       }
