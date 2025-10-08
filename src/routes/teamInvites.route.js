@@ -194,7 +194,18 @@ router.post(
       console.log("🔍 [4/5] Generando token y fecha de expiración...");
       const token = generateToken();
       const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
-      console.log("✅ [4/5] Token generado");
+      
+      // ✅ VALIDACIÓN: Verificar que la fecha sea válida
+      if (isNaN(expiresAt.getTime())) {
+        console.error("❌ Fecha inválida generada:", {
+          expiresInDays,
+          calculation: `Date.now() + ${expiresInDays} * 24 * 60 * 60 * 1000`,
+          result: expiresAt
+        });
+        throw new HttpError(400, `Error calculando fecha de expiración. expiresInDays: ${expiresInDays}`);
+      }
+      
+      console.log("✅ [4/5] Token y fecha generados correctamente");
 
       // Log del payload antes de crear (para debugging)
       console.log("� [5/5] Creando invitación en base de datos...");
