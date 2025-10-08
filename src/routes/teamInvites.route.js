@@ -103,6 +103,14 @@ function buildAcceptUrl({ token, target }) {
 ============================================================ */
 router.post(
   "/:teamId/invites",
+  // Middleware de debugging ANTES de validación
+  (req, res, next) => {
+    console.log("🚀 POST /teams/:teamId/invites recibido");
+    console.log("📦 req.params:", req.params);
+    console.log("📦 req.body:", JSON.stringify(req.body, null, 2));
+    console.log("📦 req.query:", req.query);
+    next();
+  },
   validate(TeamIdParams, "params"),
   validate(CreateInviteBody),
   async (req, res, next) => {
