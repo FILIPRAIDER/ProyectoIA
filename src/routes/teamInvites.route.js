@@ -119,8 +119,11 @@ router.post(
   async (req, res, next) => {
     try {
       const { teamId } = req.validated?.params || req.params;
-      const { email, role, byUserId, message, expiresInDays, target } = req.validated?.body || req.body;
+      let { email, role, byUserId, message, expiresInDays, target } = req.validated?.body || req.body;
       const debug = req.query?.debug === "1";
+
+      // ✅ DEFENSA: Garantizar que expiresInDays NUNCA sea undefined/null/NaN
+      expiresInDays = expiresInDays || 7;
 
       // Log para confirmar que expiresInDays tiene valor
       console.log("✅ Valores extraídos del body validado:");
