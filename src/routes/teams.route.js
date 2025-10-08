@@ -4,7 +4,6 @@ import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { validate } from "../middleware/validate.js";
 import { HttpError } from "../utils/http-errors.js";
-import { sendTeamInviteEmail } from "../lib/mailer.js";
 import { InviteStatus } from "@prisma/client";
 
 export const router = Router();
@@ -568,18 +567,6 @@ function generateToken() {
   return crypto.randomBytes(32).toString("hex"); // 64 chars
 }
 
-function buildAcceptUrl({ token, target }) {
-  const { APP_BASE_URL, API_BASE_URL } = process.env;
-  if (target === "backend") {
-    const base = API_BASE_URL ?? "http://localhost:4001";
-    return `${base}/teams/invites/${token}/accept`; // GET
-  }
-  const app = APP_BASE_URL ?? "http://localhost:3000";
-  const url = new URL("/join", app);
-  url.searchParams.set("token", token);
-  return url.toString();
-}
-
 /* ============================================================================
    INVITES — Schemas
 ============================================================================ */
@@ -691,29 +678,21 @@ router.post(
         },
       });
 
-      const acceptUrl = buildAcceptUrl({ token, target });
+      console.log("✅ Invitación creada exitosamente");
+      console.log("📧 Email será manejado por el frontend");
 
-      // Enviar correo (errores no invalidan la creación)
-      let emailInfo = null;
-      try {
-        emailInfo = await sendTeamInviteEmail({
-          to: email,
-          teamName: team.name,
-          acceptUrl,
-          message,
-        });
-      } catch (mailErr) {
-        console.error(
-          "[mailer] Error enviando invitación:",
-          mailErr?.message || mailErr
-        );
-      }
-
+      // Retornar la invitación con el token para que el frontend envíe el email
       res.status(201).json({
-        ...invite,
-        emailSent: Boolean(emailInfo?.id),
-        acceptUrlExample: acceptUrl,
-        token, // útil en dev
+        id: invite.id,
+        email: invite.email,
+        role: invite.role,
+        token: invite.token,
+        status: invite.status,
+        expiresAt: invite.expiresAt,
+        teamId: invite.teamId,
+        invitedBy: invite.invitedBy,
+        message: invite.message,
+        createdAt: invite.createdAt,
       });
     } catch (e) {
       if (e?.code === "P2002") {
@@ -978,32 +957,23 @@ router.post(
         );
       }
 
-      const team = await prisma.team.findUnique({
-        where: { id: teamId },
-        select: { name: true },
-      });
-      const acceptUrl = buildAcceptUrl({ token: invite.token, target });
+      console.log("📧 Reenvío de email será manejado por el frontend");
 
-      let emailInfo = null;
-      try {
-        emailInfo = await sendTeamInviteEmail({
-          to: invite.email,
-          teamName: team?.name ?? "Equipo",
-          acceptUrl,
-          message: invite.message ?? undefined,
-        });
-      } catch (mailErr) {
-        console.error(
-          "[mailer] Error reenviando invitación:",
-          mailErr?.message || mailErr
-        );
-      }
-
+      // Retornar la invitación para que el frontend reenvíe el email
       return res.json({
         ok: true,
         inviteId,
-        emailSent: Boolean(emailInfo?.id),
-        acceptUrlExample: acceptUrl,
+        invitation: {
+          id: invite.id,
+          email: invite.email,
+          role: invite.role,
+          token: invite.token,
+          status: invite.status,
+          expiresAt: invite.expiresAt,
+          teamId: invite.teamId,
+          invitedBy: invite.invitedBy,
+          message: invite.message,
+        },
       });
     } catch (e) {
       next(e);
