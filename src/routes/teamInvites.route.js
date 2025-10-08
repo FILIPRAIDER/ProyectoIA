@@ -122,17 +122,25 @@ router.post(
 
       const acceptUrl = buildAcceptUrl({ token, target });
 
+      // Obtener nombre del invitador
+      const inviter = await prisma.user.findUnique({
+        where: { id: byUserId },
+        select: { name: true, email: true },
+      });
+      const inviterName = inviter?.name || inviter?.email || "Un miembro del equipo";
+
       // Envío de email
       let emailInfo = null;
       try {
         emailInfo = await sendTeamInviteEmail({
           to: email,
           teamName: team.name,
+          inviterName,
           acceptUrl,
           message,
         });
       } catch (mailErr) {
-        console.error("[mailer] Error enviando invitación:", mailErr?.message || mailErr);
+        console.error("[mailer] ❌ Error enviando invitación:", mailErr?.message || mailErr);
       }
 
       res.status(201).json({
@@ -199,6 +207,81 @@ router.post(
       });
 
       res.json(updated);
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/* ============================================================
+   GET /teams/invites/:token/info
+   Obtiene información de la invitación SIN aceptarla
+   Para que el frontend pueda mostrar datos antes de aceptar
+============================================================ */
+router.get(
+  "/invites/:token/info",
+  validate(AcceptInviteParams, "params"),
+  async (req, res, next) => {
+    try {
+      const { token } = req.params;
+
+      const invite = await prisma.teamInvite.findUnique({
+        where: { token },
+        include: {
+          team: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              area: true,
+              members: {
+                select: {
+                  id: true,
+                  role: true,
+                  user: {
+                    select: {
+                      id: true,
+                      name: true,
+                      email: true,
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!invite) {
+        throw new HttpError(404, "Invitación no encontrada");
+      }
+
+      // Verificar expiración
+      const isExpired = invite.expiresAt && invite.expiresAt.getTime() < Date.now();
+      
+      // Obtener nombre del invitador
+      const inviter = await prisma.user.findUnique({
+        where: { id: invite.invitedBy },
+        select: { id: true, name: true, email: true }
+      });
+
+      res.json({
+        token: invite.token,
+        email: invite.email,
+        role: invite.role,
+        status: invite.status,
+        message: invite.message,
+        createdAt: invite.createdAt,
+        expiresAt: invite.expiresAt,
+        isExpired,
+        canAccept: invite.status === "PENDING" && !isExpired,
+        team: invite.team,
+        inviter: inviter ? {
+          name: inviter.name || inviter.email,
+          email: inviter.email
+        } : null,
+        memberCount: invite.team.members.length
+      });
     } catch (e) {
       next(e);
     }
@@ -276,8 +359,34 @@ router.get(
   async (req, res, next) => {
     try {
       const { token } = req.params;
-      const result = await acceptInviteCore(token, undefined);
-      res.json(result);
+      
+      // Si viene ?redirect=false, devuelve JSON (para testing)
+      if (req.query.redirect === "false") {
+        const result = await acceptInviteCore(token, undefined);
+        return res.json(result);
+      }
+
+      // Por defecto, redirige al frontend
+      const { APP_BASE_URL } = process.env;
+      const frontendUrl = APP_BASE_URL || "http://localhost:3000";
+      
+      try {
+        // Intenta aceptar la invitación
+        const result = await acceptInviteCore(token, undefined);
+        
+        // Redirige al frontend con éxito
+        const redirectUrl = new URL("/join/success", frontendUrl);
+        redirectUrl.searchParams.set("team", result.membership.teamId);
+        redirectUrl.searchParams.set("role", result.membership.role);
+        
+        res.redirect(redirectUrl.toString());
+      } catch (error) {
+        // Redirige al frontend con error
+        const redirectUrl = new URL("/join/error", frontendUrl);
+        redirectUrl.searchParams.set("message", error.message || "Error al aceptar invitación");
+        
+        res.redirect(redirectUrl.toString());
+      }
     } catch (e) {
       next(e);
     }

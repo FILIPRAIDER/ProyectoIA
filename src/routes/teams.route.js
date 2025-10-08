@@ -236,25 +236,138 @@ const RemoveMemberParams = z.object({
   userId: z.string().min(1),
 });
 
+const RemoveMemberBody = z.object({
+  byUserId: z.string().min(1),
+});
+
 router.delete(
   "/:teamId/members/:userId",
   validate(RemoveMemberParams, "params"),
+  validate(RemoveMemberBody),
   async (req, res, next) => {
     try {
+      const { teamId, userId } = req.params;
+      const { byUserId } = req.body;
+
+      // ✅ Verificar que el usuario actual es líder del equipo
+      await assertLeaderOrAdmin(teamId, byUserId);
+
+      // ✅ No puede expulsarse a sí mismo
+      if (userId === byUserId) {
+        throw new HttpError(400, "No puedes expulsarte a ti mismo");
+      }
+
+      // ✅ Obtener miembro a expulsar
+      const memberToRemove = await prisma.teamMember.findUnique({
+        where: { teamId_userId: { teamId, userId } },
+        select: { role: true },
+      });
+
+      if (!memberToRemove) {
+        throw new HttpError(404, "El usuario no es miembro de este equipo");
+      }
+
+      // ✅ Si es líder, verificar que haya al menos otro líder
+      if (memberToRemove.role === "LIDER") {
+        const leaderCount = await prisma.teamMember.count({
+          where: { teamId, role: "LIDER" },
+        });
+
+        if (leaderCount === 1) {
+          throw new HttpError(
+            400,
+            "Debe haber al menos un líder en el equipo"
+          );
+        }
+      }
+
+      // ✅ Expulsar miembro
       await prisma.teamMember.delete({
-        where: {
-          teamId_userId: {
-            teamId: req.params.teamId,
-            userId: req.params.userId,
+        where: { teamId_userId: { teamId, userId } },
+      });
+
+      res.json({
+        success: true,
+        message: "Miembro expulsado correctamente",
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/* ============================================================================
+   CAMBIAR ROL DE MIEMBRO
+============================================================================ */
+const ChangeMemberRoleParams = z.object({
+  teamId: z.string().min(1),
+  userId: z.string().min(1),
+});
+
+const ChangeMemberRoleBody = z.object({
+  role: z.enum(["LIDER", "MIEMBRO"]),
+  byUserId: z.string().min(1),
+});
+
+router.patch(
+  "/:teamId/members/:userId/role",
+  validate(ChangeMemberRoleParams, "params"),
+  validate(ChangeMemberRoleBody),
+  async (req, res, next) => {
+    try {
+      const { teamId, userId } = req.params;
+      const { role, byUserId } = req.body;
+
+      // ✅ Verificar que el usuario actual es líder del equipo
+      await assertLeaderOrAdmin(teamId, byUserId);
+
+      // ✅ No puede cambiar su propio rol
+      if (userId === byUserId) {
+        throw new HttpError(400, "No puedes cambiar tu propio rol");
+      }
+
+      // ✅ Obtener miembro a cambiar
+      const memberToChange = await prisma.teamMember.findUnique({
+        where: { teamId_userId: { teamId, userId } },
+        select: { role: true },
+      });
+
+      if (!memberToChange) {
+        throw new HttpError(404, "El usuario no es miembro de este equipo");
+      }
+
+      // ✅ Si va a cambiar de LIDER a MIEMBRO, verificar que haya otro líder
+      if (memberToChange.role === "LIDER" && role === "MIEMBRO") {
+        const leaderCount = await prisma.teamMember.count({
+          where: { teamId, role: "LIDER" },
+        });
+
+        if (leaderCount === 1) {
+          throw new HttpError(
+            400,
+            "Debe haber al menos un líder en el equipo"
+          );
+        }
+      }
+
+      // ✅ Actualizar rol
+      const updated = await prisma.teamMember.update({
+        where: { teamId_userId: { teamId, userId } },
+        data: { role },
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, role: true, avatarUrl: true },
           },
         },
       });
-      res.status(204).send();
+
+      res.json({
+        success: true,
+        role,
+        member: updated,
+        message: "Rol actualizado correctamente",
+      });
     } catch (e) {
-      if (e?.code === "P2025")
-        return next(
-          new HttpError(404, "El usuario no es miembro de este equipo")
-        );
       next(e);
     }
   }
