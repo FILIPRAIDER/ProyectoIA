@@ -27,6 +27,13 @@ router.post("/", validate(CreateSkillSchema), async (req, res, next) => {
 
 // ---------- GET /skills ----------
 // Soporta búsqueda, paginación y ordenamiento
+// Query params:
+//   - search: Filtrar por nombre (case-insensitive)
+//   - limit: Resultados por página (default: 50, max: 100)
+//   - page: Número de página (default: 1)
+//   - orderBy: Campo para ordenar (default: "name")
+//   - order: Dirección (asc/desc, default: "asc")
+//   - simple: Si es "true", retorna solo {id, name} para autocomplete
 router.get("/", async (req, res, next) => {
   try {
     const {
@@ -35,11 +42,13 @@ router.get("/", async (req, res, next) => {
       limit = "50",
       orderBy = "name",
       order = "asc",
+      simple = "false", // Nuevo: modo simple para autocomplete
     } = req.query;
 
     const pageNum = Math.max(1, parseInt(page, 10));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
     const skip = (pageNum - 1) * limitNum;
+    const isSimpleMode = simple === "true";
 
     // Construir filtro de búsqueda
     const where = search
@@ -51,14 +60,13 @@ router.get("/", async (req, res, next) => {
         }
       : {};
 
-    // Obtener skills con filtros
-    const [skills, total] = await Promise.all([
-      prisma.skill.findMany({
-        where,
-        orderBy: { [orderBy]: order },
-        skip,
-        take: limitNum,
-        select: {
+    // Determinar qué campos seleccionar
+    const selectFields = isSimpleMode
+      ? {
+          id: true,
+          name: true,
+        }
+      : {
           id: true,
           name: true,
           createdAt: true,
@@ -69,23 +77,34 @@ router.get("/", async (req, res, next) => {
               projects: true,
             },
           },
-        },
+        };
+
+    // Obtener skills con filtros
+    const [skills, total] = await Promise.all([
+      prisma.skill.findMany({
+        where,
+        orderBy: { [orderBy]: order },
+        skip,
+        take: limitNum,
+        select: selectFields,
       }),
       prisma.skill.count({ where }),
     ]);
 
-    // Formatear respuesta con estadísticas
-    const formattedSkills = skills.map((skill) => ({
-      id: skill.id,
-      name: skill.name,
-      createdAt: skill.createdAt,
-      stats: {
-        usersCount: skill._count.users,
-        teamsCount: skill._count.teams,
-        projectsCount: skill._count.projects,
-        totalUsage: skill._count.users + skill._count.teams + skill._count.projects,
-      },
-    }));
+    // Formatear respuesta según el modo
+    const formattedSkills = isSimpleMode
+      ? skills // Retornar tal cual para autocomplete: { id, name }
+      : skills.map((skill) => ({
+          id: skill.id,
+          name: skill.name,
+          createdAt: skill.createdAt,
+          stats: {
+            usersCount: skill._count.users,
+            teamsCount: skill._count.teams,
+            projectsCount: skill._count.projects,
+            totalUsage: skill._count.users + skill._count.teams + skill._count.projects,
+          },
+        }));
 
     res.json({
       ok: true,
