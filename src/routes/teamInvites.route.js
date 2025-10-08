@@ -123,14 +123,17 @@ router.post(
       if (!team) throw new HttpError(404, "Equipo no encontrado");
 
       // ✨ MEJORADO: Mejor mensaje de error en validación de líder
+      console.log("🔍 [1/5] Verificando permisos del usuario...");
       try {
         await assertLeaderOrAdmin(teamId, byUserId);
+        console.log("✅ [1/5] Permisos verificados");
       } catch (authError) {
         console.error("❌ Error de autorización:", authError.message);
         throw authError;
       }
 
       // ¿Ya es miembro?
+      console.log("🔍 [2/5] Verificando si el email ya es miembro...");
       const existingUser = await prisma.user.findUnique({
         where: { email: email.toLowerCase() },
         select: { id: true },
@@ -140,26 +143,45 @@ router.post(
           where: { teamId_userId: { teamId, userId: existingUser.id } },
           select: { teamId: true },
         });
-        if (isMember) throw new HttpError(409, "Ese email ya pertenece a un miembro de este equipo");
+        if (isMember) {
+          console.log("⚠️ [2/5] Email ya es miembro del equipo");
+          throw new HttpError(409, "Ese email ya pertenece a un miembro de este equipo");
+        }
       }
+      console.log("✅ [2/5] Email no es miembro");
 
       // ✨ MEJORADO: Verificar invitaciones pendientes existentes
-      const existingInvite = await prisma.teamInvite.findFirst({
-        where: {
-          teamId,
-          email: email.toLowerCase(),
-          status: "PENDING",
-        },
-      });
-      if (existingInvite) {
-        throw new HttpError(409, "Ya existe una invitación pendiente para este email");
+      console.log("🔍 [3/5] Verificando invitaciones pendientes...");
+      try {
+        const existingInvite = await prisma.teamInvite.findFirst({
+          where: {
+            teamId,
+            email: email.toLowerCase(),
+            status: "PENDING",
+          },
+        });
+        if (existingInvite) {
+          console.log("⚠️ [3/5] Ya existe invitación pendiente");
+          throw new HttpError(409, "Ya existe una invitación pendiente para este email");
+        }
+        console.log("✅ [3/5] No hay invitaciones pendientes");
+      } catch (error) {
+        // Si el error NO es el HttpError 409 que lanzamos arriba, es un error de Prisma
+        if (error.statusCode !== 409) {
+          console.error("❌ [3/5] Error en findFirst de TeamInvite:", error);
+          throw error;
+        }
+        throw error;
       }
 
+      console.log("🔍 [4/5] Generando token y fecha de expiración...");
       const token = generateToken();
       const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
+      console.log("✅ [4/5] Token generado");
 
       // Log del payload antes de crear (para debugging)
-      console.log("📝 Creando invitación con data:", {
+      console.log("� [5/5] Creando invitación en base de datos...");
+      console.log("📝 Data a insertar:", {
         teamId,
         email: email.toLowerCase(),
         role,
