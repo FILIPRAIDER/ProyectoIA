@@ -118,9 +118,15 @@ router.post(
   validate(CreateInviteBody),
   async (req, res, next) => {
     try {
-      const { teamId } = req.params;
-      const { email, role, byUserId, message, expiresInDays, target } = req.body;
+      const { teamId } = req.validated?.params || req.params;
+      const { email, role, byUserId, message, expiresInDays, target } = req.validated?.body || req.body;
       const debug = req.query?.debug === "1";
+
+      // Log para confirmar que expiresInDays tiene valor
+      console.log("✅ Valores extraídos del body validado:");
+      console.log("  - expiresInDays:", expiresInDays, "(tipo:", typeof expiresInDays, ")");
+      console.log("  - email:", email);
+      console.log("  - role:", role);
 
       // ✨ MEJORADO: Verificar conexión a base de datos
       try {
