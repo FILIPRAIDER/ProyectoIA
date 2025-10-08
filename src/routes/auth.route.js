@@ -16,8 +16,16 @@ router.post("/login", validate(LoginSchema), async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
+    // ✅ Buscar usuario con profile incluido
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
+      include: {
+        profile: {
+          include: {
+            sector: true // Incluir sector dentro del profile
+          }
+        }
+      }
     });
 
     if (!user || !user.passwordHash) {
@@ -29,9 +37,9 @@ router.post("/login", validate(LoginSchema), async (req, res, next) => {
       throw new HttpError(401, "Credenciales inválidas");
     }
 
-    // Devuelve un payload mínimo y seguro (NextAuth lo usará)
-    const { id, name, role } = user;
-    res.json({ id, name, email, role });
+    // ✅ Devuelve el usuario completo con profile (sin passwordHash)
+    const { passwordHash, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
   } catch (e) {
     next(e);
   }

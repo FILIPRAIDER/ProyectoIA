@@ -99,7 +99,11 @@ router.get("/:id", validate(IdParams, "params"), async (req, res, next) => {
     const user = await prisma.user.findUnique({
       where: { id: req.params.id },
       include: {
-        profile: true,
+        profile: {
+          include: {
+            sector: true // ✅ Incluir sector completo dentro del profile
+          }
+        },
         experiences: {
           orderBy: { startDate: 'desc' }
         },
