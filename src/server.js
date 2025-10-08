@@ -22,6 +22,7 @@ import { router as teamInvitesRouter } from "./routes/teamInvites.route.js";
 import { router as authRoutes } from "./routes/auth.route.js";
 import { router as metaRouter } from "./routes/meta.route.js";
 import { router as notificationsRouter } from "./routes/notifications.route.js";
+import { router as debugRouter } from "./routes/debug.route.js";
 
 // ✨ MEJORADO: Usar error handler mejorado
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler.js";
@@ -84,6 +85,11 @@ app.use("/meta", metaRouter);
 
 app.use("/notifications", notificationsRouter);
 
+// Debug endpoints (solo en desarrollo/testing)
+if (NODE_ENV !== "production" || process.env.ENABLE_DEBUG === "true") {
+  app.use("/debug", debugRouter);
+  console.log("🔧 Debug endpoints enabled at /debug/*");
+}
 
 app.use(notFoundHandler);
 app.use(errorHandler);
