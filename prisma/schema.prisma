@@ -64,17 +64,26 @@ model MemberProfile {
   headline     String?
   bio          String?
   seniority    String?
-  location     String?
+  
+  // UBICACIÓN MEJORADA
+  country      String? // Código ISO: "CO", "US", "MX", etc.
+  city         String? // Ciudad seleccionada
+  address      String? // Dirección completa (opcional)
+  location     String? // DEPRECATED: mantener para compatibilidad
+  
   availability Int?
   stack        String?
-  sector       String?
+  
+  // SECTOR NORMALIZADO
+  sectorId     String? // FK a tabla Sector
+  sector       Sector? @relation(fields: [sectorId], references: [id])
 
   identityType   IdentityType?
   documentNumber String?       @unique
   phone          String?
   birthdate      DateTime?
 
-  // NUEVO: teléfono normalizado
+  // Teléfono normalizado
   phoneE164    String? // +573001112233
   phoneCountry String? // ISO-3166 alpha-2: "CO", "US", etc.
 
@@ -97,6 +106,23 @@ model Skill {
   users     UserSkill[]
   teams     TeamSkill[]
   projects  ProjectSkill[]
+}
+
+model Sector {
+  id          String          @id @default(cuid())
+  name        String          @unique // slug: "technology", "finance", etc.
+  nameEs      String          // Nombre en español
+  nameEn      String          // Nombre en inglés
+  description String?
+  icon        String?         // emoji o código de ícono
+  active      Boolean         @default(true)
+  order       Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  profiles    MemberProfile[]
+  
+  @@index([active, order])
 }
 
 model UserSkill {
