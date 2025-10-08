@@ -51,6 +51,7 @@ model User {
   certifications  Certification[]
   experiences     Experience[]
   invitesSent     TeamInvite[]    @relation("InvitesByUser")
+  notifications   Notification[]
 
   passwordHash String? @map("password_hash")
 
@@ -302,6 +303,16 @@ enum InviteStatus {
   EXPIRED
 }
 
+enum NotificationType {
+  TEAM_INVITATION       // Usuario recibe invitación a equipo
+  INVITATION_ACCEPTED   // Líder: alguien aceptó su invitación
+  INVITATION_REJECTED   // Líder: alguien rechazó su invitación
+  TEAM_MATCH           // Líder: empresa interesada en equipo
+  NEW_MEMBER           // Equipo: nuevo miembro se unió
+  ROLE_CHANGE          // Usuario: cambio de rol
+  REMINDER             // General: recordatorios
+}
+
 // === Modelo TeamInvite (solo fragmento relevante) ===
 model TeamInvite {
   id        String       @id @default(cuid())
@@ -323,4 +334,24 @@ model TeamInvite {
   // @@unique([teamId, email, status], name: "team_email_status_unique")
 
   @@index([teamId, email])
+}
+
+// === Sistema de Notificaciones ===
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?            // Datos extras (teamId, inviteId, etc.)
+  read      Boolean          @default(false)
+  actionUrl String?          // URL para "Ver más"
+  createdAt DateTime         @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("notifications")
 }

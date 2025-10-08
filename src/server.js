@@ -21,6 +21,7 @@ import { router as projectApplicationsRouter } from "./routes/projectApplication
 import { router as teamInvitesRouter } from "./routes/teamInvites.route.js";
 import { router as authRoutes } from "./routes/auth.route.js";
 import { router as metaRouter } from "./routes/meta.route.js";
+import { router as notificationsRouter } from "./routes/notifications.route.js";
 
 // ✨ MEJORADO: Usar error handler mejorado
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler.js";
@@ -80,6 +81,8 @@ app.use("/teams", teamInvitesRouter);
 app.use("/auth", authRoutes);
 
 app.use("/meta", metaRouter);
+
+app.use("/notifications", notificationsRouter);
 
 
 app.use(notFoundHandler);

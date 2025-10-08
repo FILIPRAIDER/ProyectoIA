@@ -14,10 +14,7 @@ export const prisma =
   new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
     datasources: { db: { url: DATABASE_URL } },
-    // ✨ NUEVO: Pool de conexiones optimizado para serverless
-    // Neon recomienda connection pooling para evitar "connection closed"
-    connectionLimit: 10,
-    // ✨ NUEVO: Retry automático en caso de conexión cerrada
+    // ✨ NUEVO: Formato de errores más legible
     errorFormat: 'pretty',
   });
 

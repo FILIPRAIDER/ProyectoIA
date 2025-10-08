@@ -5,6 +5,7 @@ import { prisma } from "../lib/prisma.js";
 import { validate } from "../middleware/validate.js";
 import { HttpError } from "../utils/http-errors.js";
 import { sendTeamInviteEmail } from "../lib/mailer.js";
+import { createNotification } from "../lib/notifications.js";
 
 export const router = Router();
 
@@ -193,6 +194,35 @@ router.post(
         console.error("[mailer] ❌ Error enviando invitación:", mailErr?.message || mailErr);
       }
 
+      // 🔔 CREAR NOTIFICACIÓN si el usuario invitado existe en la plataforma
+      try {
+        const invitedUser = await prisma.user.findUnique({
+          where: { email: email.toLowerCase() },
+          select: { id: true },
+        });
+
+        if (invitedUser) {
+          await createNotification({
+            userId: invitedUser.id,
+            type: "TEAM_INVITATION",
+            title: "Nueva invitación a equipo",
+            message: `${inviterName} te invitó a unirte a ${team.name}`,
+            data: {
+              teamId: team.id,
+              teamName: team.name,
+              inviteId: invite.id,
+              token: invite.token,
+              inviterName,
+              role: invite.role,
+            },
+            actionUrl: `/join?token=${invite.token}`,
+          });
+        }
+      } catch (notifErr) {
+        console.error("[notifications] ⚠️ Error creando notificación:", notifErr?.message || notifErr);
+        // No fallar si la notificación falla
+      }
+
       res.status(201).json({
         ...invite,
         emailSent: Boolean(emailInfo?.id), // Resend retorna { id }
@@ -355,7 +385,12 @@ router.get(
    GET  /teams/invites/:token/accept  (clic directo en dev)
 ============================================================ */
 async function acceptInviteCore(token, name) {
-  const invite = await prisma.teamInvite.findUnique({ where: { token } });
+  const invite = await prisma.teamInvite.findUnique({ 
+    where: { token },
+    include: {
+      team: { select: { id: true, name: true } }
+    }
+  });
   if (!invite) throw new HttpError(404, "Invitación no válida");
   if (invite.status !== "PENDING") throw new HttpError(422, "La invitación no está en estado PENDING");
   if (invite.expiresAt && invite.expiresAt.getTime() < Date.now()) {
@@ -395,6 +430,58 @@ async function acceptInviteCore(token, name) {
     where: { id: invite.id },
     data: { status: "ACCEPTED", decidedAt: new Date() },
   });
+
+  // 🔔 NOTIFICAR AL LÍDER QUE ENVIÓ LA INVITACIÓN
+  try {
+    await createNotification({
+      userId: invite.invitedBy,
+      type: "INVITATION_ACCEPTED",
+      title: "Invitación aceptada",
+      message: `${user.name || user.email} aceptó tu invitación y se unió a ${invite.team.name}`,
+      data: {
+        teamId: invite.team.id,
+        teamName: invite.team.name,
+        newMemberId: user.id,
+        newMemberName: user.name,
+        newMemberEmail: user.email,
+      },
+      actionUrl: `/dashboard/lider?tab=members`,
+    });
+  } catch (notifErr) {
+    console.error("[notifications] ⚠️ Error notificando al líder:", notifErr?.message);
+  }
+
+  // 🔔 NOTIFICAR A TODOS LOS MIEMBROS DEL EQUIPO (excepto al nuevo)
+  try {
+    const teamMembers = await prisma.teamMember.findMany({
+      where: {
+        teamId: invite.team.id,
+        userId: { not: user.id },
+      },
+      select: { userId: true, role: true },
+    });
+
+    // Crear notificaciones en paralelo
+    await Promise.all(
+      teamMembers.map((member) =>
+        createNotification({
+          userId: member.userId,
+          type: "NEW_MEMBER",
+          title: "Nuevo miembro en el equipo",
+          message: `${user.name || user.email} se unió a ${invite.team.name}`,
+          data: {
+            teamId: invite.team.id,
+            teamName: invite.team.name,
+            newMemberId: user.id,
+            newMemberName: user.name,
+          },
+          actionUrl: `/dashboard/${member.role === "LIDER" ? "lider" : "miembro"}?tab=members`,
+        })
+      )
+    );
+  } catch (notifErr) {
+    console.error("[notifications] ⚠️ Error notificando a miembros:", notifErr?.message);
+  }
 
   return { invite: updatedInvite, user, membership };
 }
