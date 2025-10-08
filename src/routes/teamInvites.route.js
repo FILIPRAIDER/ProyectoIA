@@ -87,15 +87,27 @@ function generateToken() {
 
 function buildAcceptUrl({ token, target }) {
   const { FRONTEND_URL, APP_BASE_URL, API_BASE_URL } = process.env;
+  
+  // 🔍 DEBUG: Ver qué variables están disponibles
+  console.log("🔍 [buildAcceptUrl] Variables disponibles:");
+  console.log("  - FRONTEND_URL:", FRONTEND_URL || "❌ undefined");
+  console.log("  - APP_BASE_URL:", APP_BASE_URL || "❌ undefined");
+  console.log("  - API_BASE_URL:", API_BASE_URL || "❌ undefined");
+  console.log("  - target:", target);
+  
   if (target === "backend") {
     const base = API_BASE_URL ?? "http://localhost:4001";
     return `${base}/teams/invites/${token}/accept`; // GET (dev)
   }
   // ✅ FIX: Usar FRONTEND_URL (preferido) o APP_BASE_URL como fallback
   const app = FRONTEND_URL ?? APP_BASE_URL ?? "http://localhost:3000";
+  console.log("  - URL final seleccionado:", app);
+  
   const url = new URL("/join", app);
   url.searchParams.set("token", token);
-  return url.toString();
+  const finalUrl = url.toString();
+  console.log("  - Accept URL generado:", finalUrl);
+  return finalUrl;
 }
 
 /* ============================================================
