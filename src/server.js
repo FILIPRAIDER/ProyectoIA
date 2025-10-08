@@ -42,16 +42,21 @@ const corsOptions =
           const allowedOrigins = [
             APP_BASE_URL,
             process.env.FRONTEND_URL, // URL de Vercel
+            "https://bridge-ai-api.onrender.com", // AI-API en Render
+            "http://localhost:4101", // AI-API local
             // Agregar más dominios si es necesario
           ].filter(Boolean);
 
           if (allowedOrigins.includes(origin)) {
             callback(null, true);
           } else {
+            console.warn(`❌ CORS bloqueado para origen: ${origin}`);
             callback(new Error("No permitido por CORS"));
           }
         },
         credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-By", "User-Agent"],
         optionsSuccessStatus: 200,
       }
     : {
@@ -62,6 +67,18 @@ const corsOptions =
 app.use(cors(corsOptions));
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan(NODE_ENV === "production" ? "combined" : "dev"));
+
+// Logging de peticiones del AI-API
+app.use((req, res, next) => {
+  const origin = req.get("origin");
+  const userAgent = req.get("user-agent");
+  
+  if (origin?.includes("bridge-ai-api") || userAgent?.includes("AI-API")) {
+    console.log(`🤖 AI-API Request: ${req.method} ${req.path} - Origin: ${origin}`);
+  }
+  
+  next();
+});
 
 app.use("/health", healthRouter);
 app.use("/users", usersRouter);
