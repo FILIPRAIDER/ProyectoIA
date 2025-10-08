@@ -128,12 +128,13 @@ model Team {
 }
 
 model TeamMember {
-  id     String   @id @default(cuid())
-  teamId String
-  userId String
-  role   TeamRole @default(MIEMBRO)
-  team   Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id       String   @id @default(cuid())
+  teamId   String
+  userId   String
+  role     TeamRole @default(MIEMBRO)
+  joinedAt DateTime @default(now())
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([teamId, userId])
 }

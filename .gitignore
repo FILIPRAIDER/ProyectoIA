@@ -32,10 +32,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# Ignore all markdown files except README.md
 *.md 
 !README.md
-!NEON_CONNECTION_FIX.md
-!DEPLOY_CONNECTION_FIX.md
-!BACKEND_CHANGES_COMPLETED.md
-!BACKEND_ANALYSIS.md
-!BACKEND_TEAM_MEMBERS.md
