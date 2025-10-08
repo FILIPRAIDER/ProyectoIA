@@ -15,20 +15,28 @@ function escapeHtml(s) {
 }
 
 // Template HTML profesional para emails de invitación
-// ✅ Optimizado para Gmail - usa tablas y estilos inline
 const EMAIL_TEMPLATE = `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Invitación a equipo - Bridge</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #0f172a; background-color: #f8fafc;">
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f8fafc; padding: 20px 0;">
-    <tr>
-      <td align="center">
-        <!-- Contenedor principal -->
-        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; background-color: #ffffff; margin: 0 auto;
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      color: #0f172a;
+      background-color: #f8fafc;
+    }
+    
+    .email-wrapper {
+      max-width: 600px;
       margin: 0 auto;
       background-color: #ffffff;
     }
