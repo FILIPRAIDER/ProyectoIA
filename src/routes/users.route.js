@@ -7,6 +7,56 @@ import { HttpError } from "../utils/http-errors.js";
 
 export const router = Router();
 
+// ============ BÚSQUEDA DE USUARIOS ============
+
+/**
+ * GET /users/search
+ * Busca usuarios por email (autocomplete)
+ * Query params: email (required), role (optional), limit (optional, default: 10)
+ */
+router.get("/search", async (req, res, next) => {
+  try {
+    const { email, role, limit = "10" } = req.query;
+    
+    // Validación
+    if (!email || typeof email !== "string" || email.trim() === "") {
+      throw new HttpError(400, "El parámetro 'email' es obligatorio");
+    }
+    
+    // Construir filtros
+    const where = {
+      email: {
+        contains: email.trim(),
+        mode: "insensitive", // Case-insensitive
+      },
+    };
+    
+    // Filtrar por rol si se proporciona
+    if (role && typeof role === "string") {
+      where.role = role.toUpperCase();
+    }
+    
+    // Buscar usuarios
+    const users = await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+      },
+      take: parseInt(limit, 10),
+      orderBy: {
+        email: "asc",
+      },
+    });
+    
+    res.status(200).json(users);
+  } catch (e) {
+    next(e);
+  }
+});
+
 // ============ USUARIOS ============
 
 const StrongPassword = z
