@@ -8,14 +8,44 @@ if (!DATABASE_URL) {
 
 const globalForPrisma = globalThis;
 
+// ✨ MEJORADO: Configuración optimizada para Neon PostgreSQL
 export const prisma =
   globalForPrisma.__prisma ||
   new PrismaClient({
-    log: ["error", "warn"],
+    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
     datasources: { db: { url: DATABASE_URL } },
+    // ✨ NUEVO: Pool de conexiones optimizado para serverless
+    // Neon recomienda connection pooling para evitar "connection closed"
+    connectionLimit: 10,
+    // ✨ NUEVO: Retry automático en caso de conexión cerrada
+    errorFormat: 'pretty',
   });
 
-if (!globalForPrisma.__prisma) globalForPrisma.__prisma = prisma;
+if (!globalForPrisma.__prisma) {
+  globalForPrisma.__prisma = prisma;
+  
+  // ✨ NUEVO: Middleware para reconectar automáticamente
+  prisma.$use(async (params, next) => {
+    try {
+      return await next(params);
+    } catch (error) {
+      // Si la conexión se cerró, intentar reconectar
+      if (error?.message?.includes('Closed') || error?.message?.includes('connection')) {
+        console.warn('⚠️ Conexión cerrada, intentando reconectar...');
+        try {
+          await prisma.$connect();
+          return await next(params);
+        } catch (reconnectError) {
+          console.error('❌ Error al reconectar:', reconnectError);
+          throw error;
+        }
+      }
+      throw error;
+    }
+  });
+  
+  console.log('✅ Prisma Client inicializado');
+}
 
 // --- Apagado limpio para evitar conexiones colgadas en reinicios ---
 
@@ -28,8 +58,7 @@ async function gracefulDisconnect(label) {
   }
 }
 
-process.on("beforeExit", () => gracefulDisconnect("beforeExit"));
-process.on("exit", () => gracefulDisconnect("exit"));
+// ✨ MEJORADO: Solo disconnect en shutdown, no en exit
 process.on("SIGINT", async () => {
   await gracefulDisconnect("SIGINT");
   process.exit(0);

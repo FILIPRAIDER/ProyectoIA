@@ -41,18 +41,42 @@ const AcceptInviteBody = z.object({
 
 /* ============ Helpers ============ */
 async function assertLeaderOrAdmin(teamId, byUserId) {
-  const actor = await prisma.user.findUnique({ where: { id: byUserId }, select: { id: true, role: true } });
-  if (!actor) throw new HttpError(404, "Usuario actor (byUserId) no encontrado");
+  // ✨ MEJORADO: Verificar que el usuario existe
+  const actor = await prisma.user.findUnique({ 
+    where: { id: byUserId }, 
+    select: { id: true, role: true, name: true, email: true } 
+  });
+  
+  if (!actor) {
+    console.error(`❌ Usuario no encontrado: ${byUserId}`);
+    throw new HttpError(404, "Usuario no encontrado. Por favor inicia sesión nuevamente.");
+  }
 
+  // ✨ MEJORADO: Los admins pueden gestionar cualquier equipo
   const isAdmin = actor.role === "ADMIN";
-  if (isAdmin) return true;
+  if (isAdmin) {
+    console.log(`✅ Admin detectado: ${actor.email}`);
+    return true;
+  }
 
+  // ✨ MEJORADO: Verificar que el usuario es miembro del equipo
   const actorMembership = await prisma.teamMember.findUnique({
     where: { teamId_userId: { teamId, userId: byUserId } },
-    select: { role: true },
+    select: { role: true, joinedAt: true },
   });
-  const isLeader = actorMembership?.role === "LIDER";
-  if (!isLeader) throw new HttpError(403, "Solo líder del equipo o admin puede gestionar invitaciones");
+  
+  if (!actorMembership) {
+    console.error(`❌ Usuario ${actor.email} no es miembro del equipo ${teamId}`);
+    throw new HttpError(403, "No eres miembro de este equipo");
+  }
+  
+  const isLeader = actorMembership.role === "LIDER";
+  if (!isLeader) {
+    console.error(`❌ Usuario ${actor.email} no es líder (rol: ${actorMembership.role})`);
+    throw new HttpError(403, "Solo los líderes del equipo pueden gestionar invitaciones");
+  }
+  
+  console.log(`✅ Líder verificado: ${actor.email} en equipo ${teamId}`);
   return true;
 }
 
@@ -86,10 +110,24 @@ router.post(
       const { email, role, byUserId, message, expiresInDays, target } = req.body;
       const debug = req.query?.debug === "1";
 
+      // ✨ MEJORADO: Verificar conexión a base de datos
+      try {
+        await prisma.$queryRaw`SELECT 1`;
+      } catch (dbError) {
+        console.error("❌ Error de conexión a base de datos:", dbError);
+        throw new HttpError(503, "Error de conexión a base de datos. Por favor intenta de nuevo.");
+      }
+
       const team = await prisma.team.findUnique({ where: { id: teamId }, select: { id: true, name: true } });
       if (!team) throw new HttpError(404, "Equipo no encontrado");
 
-      await assertLeaderOrAdmin(teamId, byUserId);
+      // ✨ MEJORADO: Mejor mensaje de error en validación de líder
+      try {
+        await assertLeaderOrAdmin(teamId, byUserId);
+      } catch (authError) {
+        console.error("❌ Error de autorización:", authError.message);
+        throw authError;
+      }
 
       // ¿Ya es miembro?
       const existingUser = await prisma.user.findUnique({
@@ -104,13 +142,25 @@ router.post(
         if (isMember) throw new HttpError(409, "Ese email ya pertenece a un miembro de este equipo");
       }
 
+      // ✨ MEJORADO: Verificar invitaciones pendientes existentes
+      const existingInvite = await prisma.teamInvite.findFirst({
+        where: {
+          teamId,
+          email: email.toLowerCase(),
+          status: "PENDING",
+        },
+      });
+      if (existingInvite) {
+        throw new HttpError(409, "Ya existe una invitación pendiente para este email");
+      }
+
       const token = generateToken();
       const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
 
       const invite = await prisma.teamInvite.create({
         data: {
           teamId,
-          email,
+          email: email.toLowerCase(),
           role,
           token,
           status: "PENDING",
@@ -151,8 +201,20 @@ router.post(
         token, // útil en dev
       });
     } catch (e) {
+      // ✨ MEJORADO: Manejo específico de errores de Prisma
       if (e?.code === "P2002") {
         return next(new HttpError(409, "Ya existe una invitación PENDING para ese email en este equipo"));
+      }
+      if (e?.code === "P2003") {
+        console.error("❌ Error de clave foránea:", e);
+        return next(new HttpError(400, "Usuario o equipo no válido"));
+      }
+      if (e?.code === "P2025") {
+        return next(new HttpError(404, "Registro no encontrado"));
+      }
+      if (e?.message?.includes('Closed') || e?.message?.includes('connection')) {
+        console.error("❌ Error de conexión cerrada:", e);
+        return next(new HttpError(503, "Error de conexión a base de datos. Por favor intenta de nuevo."));
       }
       next(e);
     }

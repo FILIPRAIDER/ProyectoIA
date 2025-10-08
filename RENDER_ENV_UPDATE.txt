@@ -1,0 +1,47 @@
+# =========================================================
+# ACTUALIZACIÓN DE VARIABLES DE ENTORNO EN RENDER
+# =========================================================
+# Ve a: https://dashboard.render.com/web/[tu-servicio]/env
+# =========================================================
+
+# ✅ ACTUALIZAR estas variables:
+# =========================================================
+
+# 1. APP_BASE_URL - Cambiar de localhost a tu frontend real
+APP_BASE_URL=https://tu-frontend.vercel.app
+# O si tu frontend está en otro dominio:
+# APP_BASE_URL=https://tudominio.com
+
+# 2. ELIMINAR esta variable en producción:
+# RESEND_DEV_FORCE_TO=filipraider123@gmail.com
+# ❌ BÓRRALA COMPLETAMENTE de las variables de entorno en Render
+
+# =========================================================
+# 📧 CONFIGURACIÓN DE EMAILS EN PRODUCCIÓN
+# =========================================================
+
+# OPCIÓN A: Con dominio propio (Recomendado)
+# =========================================================
+# 1. Ve a https://resend.com/domains
+# 2. Agrega tu dominio
+# 3. Configura DNS (TXT, MX, CNAME)
+# 4. Verifica el dominio
+# 5. Actualiza en Render:
+RESEND_FROM=Tu Proyecto <noreply@tudominio.com>
+
+# OPCIÓN B: Sin dominio propio (Temporal)
+# =========================================================
+# Mantén el dominio de Resend:
+RESEND_FROM=Acme <onboarding@resend.dev>
+# PERO elimina RESEND_DEV_FORCE_TO para que los emails
+# lleguen a los destinatarios reales
+
+# =========================================================
+# ⚠️ IMPORTANTE
+# =========================================================
+# Después de hacer cambios en las variables de entorno:
+# 1. Click en "Save Changes"
+# 2. Render hará redeploy automático
+# 3. Espera ~2-3 minutos
+# 4. Verifica con: https://proyectoia-backend.onrender.com/health
+# =========================================================

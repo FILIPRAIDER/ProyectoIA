@@ -1,0 +1,40 @@
+# ========================================
+# VARIABLES DE ENTORNO PARA RAILWAY
+# ========================================
+# Copia estas variables una por una en Railway:
+# Settings → Variables → Add Variable
+# ========================================
+
+# 🔗 DATABASE (Neon - Pooled Connection)
+DATABASE_URL=postgresql://neondb_owner:npg_sndjGQl23JRK@ep-morning-forest-aezf0ccr-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+
+# 🌐 PUERTO (Railway lo asigna automáticamente, pero déjalo por si acaso)
+PORT=4001
+
+# 🖼️ IMAGEKIT (Servicio de imágenes)
+IMAGEKIT_PUBLIC_KEY=public_wK6Hsubk2bju+DTe/tLtP0/IF7E=
+IMAGEKIT_PRIVATE_KEY=private_fA7LGg1gV8eDEr4jnjm+8mGFGTY=
+IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/n9g1xv1xl
+IMAGEKIT_UPLOAD_FOLDER=/certifications
+
+# 📧 EMAIL (Resend)
+MAIL_PROVIDER=resend
+RESEND_API_KEY=re_436Tv277_AftgvvLLPEcHDDYfUXBQPN8s
+RESEND_FROM=Acme <onboarding@resend.dev>
+RESEND_DEV_FORCE_TO=filipraider123@gmail.com
+
+# 🌍 URLs (CAMBIAR DESPUÉS DEL DEPLOY)
+# Estas URLs las actualizarás después cuando Railway te dé tu URL de producción
+API_BASE_URL=https://tu-proyecto.railway.app
+APP_BASE_URL=https://tu-frontend.vercel.app
+
+# 🔧 NODE_ENV (Importante para producción)
+NODE_ENV=production
+
+# ========================================
+# IMPORTANTE:
+# ========================================
+# 1. DATABASE_URL usa la conexión POOLED de Neon (con -pooler en el hostname)
+# 2. API_BASE_URL y APP_BASE_URL las actualizarás después del deploy
+# 3. NODE_ENV=production es crucial para el middleware de CORS
+# ========================================
