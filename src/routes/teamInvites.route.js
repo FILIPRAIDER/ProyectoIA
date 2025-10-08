@@ -86,13 +86,14 @@ function generateToken() {
 }
 
 function buildAcceptUrl({ token, target }) {
-  // 🔥 HARDFIX NUCLEAR: Siempre usar frontend, ignorar variables de entorno
-  const FRONTEND_HARDCODED = "https://cresia-app.vercel.app";
+  // 🎯 Prioridad: FRONTEND_URL > APP_BASE_URL > Hardcoded
+  const FRONTEND_URL = process.env.FRONTEND_URL || process.env.APP_BASE_URL || "https://cresia-app.vercel.app";
   
-  console.log("� [buildAcceptUrl] HARDFIX ACTIVADO - Forzando frontend URL");
-  console.log("  - Token:", token);
+  console.log("📧 [buildAcceptUrl] Generando URL de aceptación");
+  console.log("  - Token:", token.substring(0, 10) + "...");
   console.log("  - Target solicitado:", target);
-  console.log("  - URL forzada:", FRONTEND_HARDCODED);
+  console.log("  - Frontend URL:", FRONTEND_URL);
+  console.log("  - Fuente:", process.env.FRONTEND_URL ? "FRONTEND_URL (env)" : process.env.APP_BASE_URL ? "APP_BASE_URL (env)" : "hardcoded");
   
   // Si explícitamente piden backend, usar API
   if (target === "backend") {
@@ -103,7 +104,7 @@ function buildAcceptUrl({ token, target }) {
   }
   
   // 🎯 SIEMPRE frontend para invitaciones de usuario
-  const url = new URL("/join", FRONTEND_HARDCODED);
+  const url = new URL("/join", FRONTEND_URL);
   url.searchParams.set("token", token);
   const finalUrl = url.toString();
   console.log("  ✅ Accept URL generado:", finalUrl);
