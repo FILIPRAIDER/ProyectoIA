@@ -321,7 +321,7 @@ const CreateExpBody = z.object({
   role: z.string().min(2).max(120),
   company: z.string().min(2).max(160).optional(),
   startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().nullable().optional(),
   description: z.string().max(2000).optional(),
 });
 
