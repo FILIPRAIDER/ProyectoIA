@@ -99,8 +99,9 @@ function buildAcceptUrl({ token, target }) {
     const base = API_BASE_URL ?? "http://localhost:4001";
     return `${base}/teams/invites/${token}/accept`; // GET (dev)
   }
-  // ✅ FIX: Usar FRONTEND_URL (preferido) o APP_BASE_URL como fallback
-  const app = FRONTEND_URL ?? APP_BASE_URL ?? "http://localhost:3000";
+  
+  // ✅ HARDFIX: Forzar uso del frontend mientras Render aplica FRONTEND_URL
+  const app = FRONTEND_URL ?? APP_BASE_URL ?? "https://cresia-app.vercel.app";
   console.log("  - URL final seleccionado:", app);
   
   const url = new URL("/join", app);
