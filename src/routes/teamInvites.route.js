@@ -86,28 +86,27 @@ function generateToken() {
 }
 
 function buildAcceptUrl({ token, target }) {
-  const { FRONTEND_URL, APP_BASE_URL, API_BASE_URL } = process.env;
+  // 🔥 HARDFIX NUCLEAR: Siempre usar frontend, ignorar variables de entorno
+  const FRONTEND_HARDCODED = "https://cresia-app.vercel.app";
   
-  // 🔍 DEBUG: Ver qué variables están disponibles
-  console.log("🔍 [buildAcceptUrl] Variables disponibles:");
-  console.log("  - FRONTEND_URL:", FRONTEND_URL || "❌ undefined");
-  console.log("  - APP_BASE_URL:", APP_BASE_URL || "❌ undefined");
-  console.log("  - API_BASE_URL:", API_BASE_URL || "❌ undefined");
-  console.log("  - target:", target);
+  console.log("� [buildAcceptUrl] HARDFIX ACTIVADO - Forzando frontend URL");
+  console.log("  - Token:", token);
+  console.log("  - Target solicitado:", target);
+  console.log("  - URL forzada:", FRONTEND_HARDCODED);
   
+  // Si explícitamente piden backend, usar API
   if (target === "backend") {
+    const { API_BASE_URL } = process.env;
     const base = API_BASE_URL ?? "http://localhost:4001";
-    return `${base}/teams/invites/${token}/accept`; // GET (dev)
+    console.log("  - Excepción: usando backend URL:", base);
+    return `${base}/teams/invites/${token}/accept`;
   }
   
-  // ✅ HARDFIX: Forzar uso del frontend mientras Render aplica FRONTEND_URL
-  const app = FRONTEND_URL ?? APP_BASE_URL ?? "https://cresia-app.vercel.app";
-  console.log("  - URL final seleccionado:", app);
-  
-  const url = new URL("/join", app);
+  // 🎯 SIEMPRE frontend para invitaciones de usuario
+  const url = new URL("/join", FRONTEND_HARDCODED);
   url.searchParams.set("token", token);
   const finalUrl = url.toString();
-  console.log("  - Accept URL generado:", finalUrl);
+  console.log("  ✅ Accept URL generado:", finalUrl);
   return finalUrl;
 }
 
