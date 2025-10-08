@@ -86,12 +86,13 @@ function generateToken() {
 }
 
 function buildAcceptUrl({ token, target }) {
-  const { APP_BASE_URL, API_BASE_URL } = process.env;
+  const { FRONTEND_URL, APP_BASE_URL, API_BASE_URL } = process.env;
   if (target === "backend") {
     const base = API_BASE_URL ?? "http://localhost:4001";
     return `${base}/teams/invites/${token}/accept`; // GET (dev)
   }
-  const app = APP_BASE_URL ?? "http://localhost:3000";
+  // ✅ FIX: Usar FRONTEND_URL (preferido) o APP_BASE_URL como fallback
+  const app = FRONTEND_URL ?? APP_BASE_URL ?? "http://localhost:3000";
   const url = new URL("/join", app);
   url.searchParams.set("token", token);
   return url.toString();
