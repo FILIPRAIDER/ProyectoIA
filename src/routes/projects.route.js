@@ -17,6 +17,7 @@ const CreateProjectBody = z.object({
   area: z.string().trim().optional(),
   status: z.enum(["OPEN", "IN_PROGRESS", "DONE", "CANCELED"]).optional(),
   budget: z.coerce.number().optional(),
+  budgetCurrency: z.enum(["COP", "USD"]).optional().default("COP"), // 💱 Moneda del presupuesto
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
 });
@@ -69,6 +70,7 @@ router.post("/", validate(CreateProjectBody), async (req, res, next) => {
         area: req.body.area ?? null,
         status: req.body.status ?? "OPEN",
         budget: req.body.budget ?? null,
+        budgetCurrency: req.body.budgetCurrency ?? "COP", // 💱 Default: COP
         startDate: req.body.startDate ? new Date(req.body.startDate) : null,
         endDate: req.body.endDate ? new Date(req.body.endDate) : null,
       },
@@ -145,6 +147,8 @@ router.get("/", validate(ListProjectsQuery, "query"), async (req, res, next) => 
           status: true,
           city: true,
           area: true,
+          budget: true,
+          budgetCurrency: true, // 💱 Incluir moneda
           description: true, // <- NUEVO cuando includeDescription=true
           company: { select: { id: true, name: true } },
           _count: { select: { assignments: true } },
@@ -155,6 +159,8 @@ router.get("/", validate(ListProjectsQuery, "query"), async (req, res, next) => 
           status: true,
           city: true,
           area: true,
+          budget: true,
+          budgetCurrency: true, // 💱 Incluir moneda
           company: { select: { id: true, name: true } },
           _count: { select: { assignments: true } },
         };
