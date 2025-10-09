@@ -55,7 +55,7 @@ router.post(
         throw new HttpError(400, "Proyecto cancelado");
       }
 
-      const { candidates, filtersApplied } = await computeCandidates({
+      const { candidates } = await computeCandidates({
         prisma,
         project,
         top,
@@ -65,25 +65,23 @@ router.post(
         requireCity,
       });
 
-      const response = {
-        project: {
-          id: project.id,
-          title: project.title,
-          city: project.city,
-          area: project.area,
-          requiredSkills: (project.skills ?? []).map((ps) => ({
-            skillId: ps.skillId,
-            skillName: ps.skill?.name ?? "",
-            levelRequired: ps.levelRequired ?? null,
-          })),
-        },
-        top: Number(top),
-        candidates,
-      };
+      // Adaptar los campos al formato solicitado
+      const teams = candidates.map(team => ({
+        teamId: team.teamId,
+        name: team.teamName,
+        avatarUrl: team.avatarUrl || `https://cdn.bridge.com/avatars/${team.teamId}.png`,
+        skills: team.teamSkillNames || [],
+        members: team.membersCount,
+        rating: team.rating || null, // Si tienes rating real, ponlo aquí
+        location: team.city || "",
+        availability: team.avgAvailability !== undefined ? (team.avgAvailability === 0 ? "No disponible" : "Inmediata") : "",
+        matchScore: team.score || 0
+      }));
 
-      if (explain) response.filtersApplied = filtersApplied;
-
-      res.json(response);
+      res.json({
+        type: "team_matches",
+        teams
+      });
     } catch (err) {
       next(err);
     }
