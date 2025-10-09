@@ -78,7 +78,10 @@ router.post(
       });
 
       // Actualizar en DB (tanto User como MemberProfile)
-      await prisma.user.update({
+      console.log(`📝 [Avatar Upload] Guardando en DB para usuario: ${userId}`);
+      console.log(`📝 [Avatar Upload] URL a guardar: ${uploadResponse.url}`);
+      
+      const updatedUser = await prisma.user.update({
         where: { id: userId },
         data: { 
           avatarUrl: uploadResponse.url,
@@ -105,9 +108,20 @@ router.post(
             }
           }
         },
+        include: {
+          profile: {
+            select: {
+              avatarUrl: true,
+              avatarKey: true,
+            }
+          }
+        }
       });
 
       console.log(`✅ Avatar actualizado para usuario ${userId}`);
+      console.log(`✅ User.avatarUrl: ${updatedUser.avatarUrl}`);
+      console.log(`✅ Profile.avatarUrl: ${updatedUser.profile?.avatarUrl || 'NULL'}`);
+      console.log(`✅ Profile.avatarKey: ${updatedUser.profile?.avatarKey || 'NULL'}`);
 
       res.json({
         ok: true,

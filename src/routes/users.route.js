@@ -253,9 +253,49 @@ router.patch(
 
 router.delete("/:userId/skills/:skillId", validate(UserSkillParams, "params"), async (req, res, next) => {
   try {
+    const { userId, skillId } = req.params;
+    
+    // 1. Eliminar la skill del usuario
     await prisma.userSkill.delete({
-      where: { userId_skillId: { userId: req.params.userId, skillId: req.params.skillId } },
+      where: { userId_skillId: { userId, skillId } },
     });
+
+    // 2. 🔄 AUTO-LIMPIAR: Limpiar skill de equipos si ningún otro miembro la tiene
+    const userTeams = await prisma.teamMember.findMany({
+      where: { userId },
+      select: { teamId: true }
+    });
+
+    let teamsUpdated = 0;
+    for (const { teamId } of userTeams) {
+      // Contar cuántos otros miembros del equipo tienen esta skill
+      const otherMembersWithSkill = await prisma.teamMember.count({
+        where: {
+          teamId,
+          userId: { not: userId },
+          user: {
+            skills: {
+              some: { skillId }
+            }
+          }
+        }
+      });
+
+      // Si ningún otro miembro tiene la skill, eliminarla del equipo
+      if (otherMembersWithSkill === 0) {
+        try {
+          await prisma.teamSkill.deleteMany({
+            where: { teamId, skillId }
+          });
+          teamsUpdated++;
+        } catch (e) {
+          console.warn(`Could not remove skill from team ${teamId}:`, e.message);
+        }
+      }
+    }
+
+    console.log(`✅ Skill eliminada del usuario y de ${teamsUpdated} equipo(s)`);
+    
     res.status(204).send();
   } catch (e) {
     if (e?.code === "P2025") {
