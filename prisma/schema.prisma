@@ -221,6 +221,7 @@ model Company {
   website   String?
   city      String?
   about     String?
+  logoUrl   String?   // URL del logo de la empresa
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   projects  Project[]

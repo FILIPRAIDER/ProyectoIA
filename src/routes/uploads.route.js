@@ -125,6 +125,98 @@ router.post(
   }
 );
 
+// POST /uploads/companies/:companyId/logo
+// Subir o reemplazar logo de la empresa
+// Solo el empresario dueño de la empresa puede subir el logo
+router.post(
+  "/companies/:companyId/logo",
+  upload.single("file"),
+  async (req, res, next) => {
+    try {
+      const { companyId } = req.params;
+      const file = req.file;
+
+      if (!file) throw new HttpError(400, "No file uploaded");
+
+      // Validar tipo de archivo
+      const allowedTypes = [
+        "image/jpeg",
+        "image/jpg", 
+        "image/png", 
+        "image/gif",
+        "image/svg+xml",
+        "image/webp"
+      ];
+      if (!allowedTypes.includes(file.mimetype)) {
+        throw new HttpError(
+          400, 
+          "Invalid file format. Allowed: PNG, JPG, GIF, SVG, WebP"
+        );
+      }
+
+      // Validar tamaño (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new HttpError(400, "File size exceeds 5MB limit");
+      }
+
+      // Verificar que la empresa existe
+      const company = await prisma.company.findUnique({
+        where: { id: companyId },
+        select: { 
+          id: true, 
+          name: true,
+          logoUrl: true,
+          users: { 
+            select: { id: true } 
+          }
+        },
+      });
+
+      if (!company) {
+        throw new HttpError(404, "Company not found");
+      }
+
+      // TODO: Descomentar cuando tengas autenticación implementada
+      // Verificar permisos - solo el empresario dueño puede subir
+      // if (!req.user || !company.users.some(u => u.id === req.user.id)) {
+      //   throw new HttpError(
+      //     403, 
+      //     "You don't have permission to upload logo for this company"
+      //   );
+      // }
+
+      // Subir imagen a ImageKit
+      const uploadResponse = await imagekit.upload({
+        file: file.buffer.toString("base64"),
+        fileName: `logo_${companyId}_${Date.now()}.${file.originalname.split(".").pop()}`,
+        folder: "/companies/logos",
+        useUniqueFileName: true,
+        tags: [`company:${companyId}`, "logo"],
+      });
+
+      // Actualizar URL del logo en la BD
+      await prisma.company.update({
+        where: { id: companyId },
+        data: { 
+          logoUrl: uploadResponse.url,
+          updatedAt: new Date()
+        },
+      });
+
+      console.log(`✅ Logo actualizado para empresa ${company.name} (${companyId})`);
+
+      res.json({
+        message: "Company logo uploaded successfully",
+        url: uploadResponse.url,
+        companyId: companyId,
+      });
+    } catch (error) {
+      console.error("❌ Error uploading company logo:", error);
+      next(error);
+    }
+  }
+);
+
 const CertParams = z.object({ certId: z.string().min(1) });
 
 router.post("/certifications/:certId/url", validate(CertParams, "params"), async (req, res, next) => {

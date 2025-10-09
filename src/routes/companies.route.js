@@ -79,6 +79,8 @@ router.get("/:id", validate(CompanyIdParams, "params"), async (req, res, next) =
       },
     });
     if (!company) throw new HttpError(404, "Empresa no encontrada");
+    
+    // Incluir logoUrl en la respuesta
     res.json(company);
   } catch (e) {
     next(e);
@@ -147,6 +149,7 @@ router.get("/", validate(ListCompaniesQuery, "query"), async (req, res, next) =>
           sector: true,
           city: true,
           website: true,
+          logoUrl: true, // 🆕 Incluir logoUrl en listado
           _count: { select: { projects: true } },
         },
       }),
