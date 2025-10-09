@@ -24,11 +24,12 @@ const CreateProjectBody = z.object({
 const ProjectIdParams = z.object({ id: z.string().min(1) });
 
 const ListProjectsQuery = z.object({
+  companyId: z.string().trim().optional(), // filtra por empresa
   status: z.enum(["OPEN", "IN_PROGRESS", "DONE", "CANCELED"]).optional(),
   city: z.string().trim().optional(),
   area: z.string().trim().optional(),
   skill: z.string().trim().optional(), // filtra por nombre de skill requerida
-  includeDescription: z.coerce.boolean().optional().default(false), // <- NUEVO
+  includeDescription: z.coerce.boolean().optional().default(false),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(10),
   sortBy: z
@@ -100,11 +101,12 @@ router.get("/:id", validate(ProjectIdParams, "params"), async (req, res, next) =
 });
 
 /* =========================
-   GET /projects?status=&city=&area=&skill=&includeDescription=
+   GET /projects?companyId=&status=&city=&area=&skill=&includeDescription=
 ========================= */
 router.get("/", validate(ListProjectsQuery, "query"), async (req, res, next) => {
   try {
     const {
+      companyId,
       status,
       city,
       area,
@@ -117,6 +119,7 @@ router.get("/", validate(ListProjectsQuery, "query"), async (req, res, next) => 
     } = req.query;
 
     const where = {
+      ...(companyId ? { companyId } : {}),
       ...(status ? { status } : {}),
       ...(city ? { city: { equals: city, mode: "insensitive" } } : {}),
       ...(area ? { area: { contains: area, mode: "insensitive" } } : {}),
