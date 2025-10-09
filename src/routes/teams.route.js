@@ -219,7 +219,42 @@ router.post(
           user: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } },
         },
       });
-      res.status(201).json(created);
+
+      // 🔄 AUTO-COPIAR: Copiar todas las skills del usuario al equipo
+      const userSkills = await prisma.userSkill.findMany({
+        where: { userId: req.body.userId },
+        select: { skillId: true }
+      });
+
+      let skillsCopied = 0;
+      for (const { skillId } of userSkills) {
+        try {
+          await prisma.teamSkill.upsert({
+            where: {
+              teamId_skillId: {
+                teamId: req.params.teamId,
+                skillId
+              }
+            },
+            create: {
+              teamId: req.params.teamId,
+              skillId
+            },
+            update: {} // No sobrescribir si ya existe
+          });
+          skillsCopied++;
+        } catch (e) {
+          // Si ya existe, continuar
+          console.warn(`Skill ${skillId} already exists in team or error:`, e.message);
+        }
+      }
+
+      console.log(`✅ Miembro agregado y ${skillsCopied} skill(s) copiadas al equipo`);
+
+      res.status(201).json({
+        ...created,
+        skillsCopied, // Información adicional para debugging
+      });
     } catch (e) {
       if (e?.code === "P2002")
         return next(

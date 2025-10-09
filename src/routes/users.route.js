@@ -176,7 +176,42 @@ router.post(
         },
         include: { skill: true },
       });
-      res.status(201).json(created);
+
+      // 🔄 AUTO-PROPAGAR: Agregar esta skill a todos los equipos del usuario
+      const userTeams = await prisma.teamMember.findMany({
+        where: { userId: req.params.userId },
+        select: { teamId: true }
+      });
+
+      let teamsUpdated = 0;
+      for (const { teamId } of userTeams) {
+        try {
+          await prisma.teamSkill.upsert({
+            where: {
+              teamId_skillId: {
+                teamId,
+                skillId: req.body.skillId
+              }
+            },
+            create: {
+              teamId,
+              skillId: req.body.skillId
+            },
+            update: {} // No actualizar si ya existe
+          });
+          teamsUpdated++;
+        } catch (e) {
+          // Si ya existe o hay error, continuar
+          console.warn(`Could not add skill to team ${teamId}:`, e.message);
+        }
+      }
+
+      console.log(`✅ Skill agregada al usuario y propagada a ${teamsUpdated} equipo(s)`);
+
+      res.status(201).json({
+        ...created,
+        teamsUpdated, // Información adicional para debugging
+      });
     } catch (e) {
       if (e?.code === "P2002") {
         return next(new HttpError(409, "El usuario ya tiene esta skill (única por userId+skillId)"));
