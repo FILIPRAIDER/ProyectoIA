@@ -33,6 +33,15 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Finder (MacOS) folder config
 .DS_Store
 
-# Ignore all markdown files except README.md
+# Ignore documentation files except essential ones
 *.md 
 !README.md
+!BACKEND_API_DOCUMENTATION.md
+!BACKEND_COMPANIES_IMPLEMENTED.md
+!BACKEND_SKILLS_SYNC_IMPLEMENTED.md
+!BACKEND_SESSION_ISSUE_CONFIRMED.md
+!BACKEND_AI_SESSION_TODO.md
+!RESPONSE_TO_FRONTEND_COMPANIES.md
+
+# Ignore temporary text files
+*.txt
