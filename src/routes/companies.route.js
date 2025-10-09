@@ -15,6 +15,15 @@ const CreateCompanySchema = z.object({
   city: z.string().trim().optional(),
   website: z.string().url().optional(),
   about: z.string().trim().optional(),
+  userId: z.string().min(1).optional(), // ID del usuario empresario que crea la empresa
+});
+
+const UpdateCompanySchema = z.object({
+  name: z.string().min(2, "Nombre muy corto").trim().optional(),
+  sector: z.string().trim().optional(),
+  city: z.string().trim().optional(),
+  website: z.string().url().optional(),
+  about: z.string().trim().optional(),
 });
 
 const CompanyIdParams = z.object({
@@ -34,7 +43,21 @@ const ListCompaniesQuery = z.object({
 ========================= */
 router.post("/", validate(CreateCompanySchema), async (req, res, next) => {
   try {
-    const company = await prisma.company.create({ data: req.body });
+    const { userId, ...companyData } = req.body;
+    
+    // 1. Crear la empresa
+    const company = await prisma.company.create({ data: companyData });
+    
+    // 2. Si se proporciona userId, vincular la empresa al usuario
+    if (userId) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { companyId: company.id }
+      });
+      
+      console.log(`✅ Empresa "${company.name}" vinculada al usuario ${userId}`);
+    }
+    
     res.status(201).json(company);
   } catch (e) {
     if (e?.code === "P2002") {
@@ -61,6 +84,42 @@ router.get("/:id", validate(CompanyIdParams, "params"), async (req, res, next) =
     next(e);
   }
 });
+
+/* =========================
+   PATCH /companies/:id
+========================= */
+router.patch(
+  "/:id",
+  validate(CompanyIdParams, "params"),
+  validate(UpdateCompanySchema),
+  async (req, res, next) => {
+    try {
+      // Construir payload solo con campos definidos
+      const updateData = {};
+      if (req.body.name !== undefined) updateData.name = req.body.name;
+      if (req.body.sector !== undefined) updateData.sector = req.body.sector;
+      if (req.body.city !== undefined) updateData.city = req.body.city;
+      if (req.body.website !== undefined) updateData.website = req.body.website;
+      if (req.body.about !== undefined) updateData.about = req.body.about;
+
+      const company = await prisma.company.update({
+        where: { id: req.params.id },
+        data: updateData,
+      });
+
+      console.log(`✅ Empresa "${company.name}" actualizada`);
+      res.json(company);
+    } catch (e) {
+      if (e?.code === "P2025") {
+        return next(new HttpError(404, "Empresa no encontrada"));
+      }
+      if (e?.code === "P2002") {
+        return next(new HttpError(409, "El nombre de la empresa ya existe"));
+      }
+      next(e);
+    }
+  }
+);
 
 /* =========================
    GET /companies?search=&page=&limit=

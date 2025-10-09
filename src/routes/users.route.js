@@ -115,6 +115,7 @@ router.get("/:id", validate(IdParams, "params"), async (req, res, next) => {
           orderBy: { level: 'desc' }
         },
         teamMemberships: { include: { team: true } },
+        company: true, // ✅ Incluir empresa si es empresario
       },
     });
     if (!user) throw new HttpError(404, "Usuario no encontrado");
