@@ -124,6 +124,88 @@ router.patch(
 );
 
 /* =========================
+   GET /companies/:id/projects
+   Lista todos los proyectos de una empresa
+========================= */
+const CompanyProjectsQuery = z.object({
+  status: z.string().trim().optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
+router.get(
+  "/:id/projects",
+  validate(CompanyIdParams, "params"),
+  validate(CompanyProjectsQuery, "query"),
+  async (req, res, next) => {
+    try {
+      const { id: companyId } = req.params;
+      const { status, limit } = req.query;
+
+      // Verificar que la empresa existe
+      const company = await prisma.company.findUnique({
+        where: { id: companyId },
+      });
+
+      if (!company) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: "COMPANY_NOT_FOUND",
+            message: "La empresa no fue encontrada",
+            companyId,
+          },
+        });
+      }
+
+      // Construir filtros
+      const where = { companyId };
+      if (status) {
+        where.status = status;
+      }
+
+      // Obtener proyectos
+      const projects = await prisma.project.findMany({
+        where,
+        take: Number(limit),
+        orderBy: { updatedAt: "desc" },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          status: true,
+          budget: true,
+          budgetCurrency: true,
+          startDate: true,
+          endDate: true,
+          city: true,
+          area: true,
+          createdAt: true,
+          updatedAt: true,
+          companyId: true,
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          totalProjects: projects.length,
+          projects,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching company projects:", error);
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "Error al obtener los proyectos",
+        },
+      });
+    }
+  }
+);
+
+/* =========================
    GET /companies?search=&page=&limit=
 ========================= */
 router.get("/", validate(ListCompaniesQuery, "query"), async (req, res, next) => {
