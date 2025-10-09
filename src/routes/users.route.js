@@ -104,7 +104,6 @@ router.get("/:id", validate(IdParams, "params"), async (req, res, next) => {
             sector: true // ✅ Incluir sector completo dentro del profile
           }
         },
-        company: true, // ✅ Incluir company para usuarios EMPRESARIO
         experiences: {
           orderBy: { startDate: 'desc' }
         },
