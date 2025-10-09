@@ -362,3 +362,36 @@ model Notification {
   @@index([createdAt])
   @@map("notifications")
 }
+
+// === Sistema de Industrias y Keywords ===
+model Industry {
+  id           String            @id @default(cuid())
+  name         String            @unique
+  nameEn       String?
+  description  String?
+  icon         String?           // emoji o icon name
+  active       Boolean           @default(true)
+  displayOrder Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  
+  keywords     IndustryKeyword[]
+  
+  @@index([active])
+}
+
+model IndustryKeyword {
+  id         String   @id @default(cuid())
+  industryId String
+  keyword    String
+  language   String   @default("es")
+  priority   Int      @default(1) // 1=baja, 2=media, 3=alta
+  createdAt  DateTime @default(now())
+  
+  industry   Industry @relation(fields: [industryId], references: [id], onDelete: Cascade)
+  
+  @@unique([industryId, keyword, language])
+  @@index([keyword])
+  @@index([industryId])
+  @@index([priority])
+}
