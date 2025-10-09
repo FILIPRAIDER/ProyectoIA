@@ -14,7 +14,7 @@ const TeamIdParams = z.object({ teamId: z.string().min(1) });
 const CreateInviteBody = z.object({
   email: z.string().email(),
   role: z.enum(["LIDER", "MIEMBRO"]).default("MIEMBRO"),
-  byUserId: z.string().min(1),                    // actor (líder/admin)
+  byUserId: z.string().min(1).optional(),         // actor (líder/admin) - OPCIONAL para compatibilidad
   message: z.string().max(500).optional(),
   expiresInDays: z.coerce.number().int().min(1).max(60).optional().default(7),
   target: z.enum(["frontend", "backend"]).optional().default("frontend"),
@@ -112,7 +112,7 @@ router.post(
       const bodyData = req.validated?.body || req.body;
       const email = bodyData.email;
       const role = bodyData.role || "MIEMBRO";
-      const byUserId = bodyData.byUserId;
+      let byUserId = bodyData.byUserId; // Puede ser undefined
       const message = bodyData.message;
       const target = bodyData.target || "frontend";
       
@@ -135,6 +135,7 @@ router.post(
       console.log("  - expiresInDays:", expiresInDays, "(tipo:", typeof expiresInDays, ")");
       console.log("  - email:", email);
       console.log("  - role:", role);
+      console.log("  - byUserId:", byUserId || "NO ENVIADO");
 
       // ✨ MEJORADO: Verificar conexión a base de datos
       try {
@@ -146,6 +147,22 @@ router.post(
 
       const team = await prisma.team.findUnique({ where: { id: teamId }, select: { id: true, name: true } });
       if (!team) throw new HttpError(404, "Equipo no encontrado");
+
+      // 🆕 Si no viene byUserId, buscar el líder del equipo
+      if (!byUserId) {
+        console.log("⚠️ byUserId no enviado. Buscando líder del equipo...");
+        const leader = await prisma.teamMember.findFirst({
+          where: { teamId, role: "LIDER" },
+          select: { userId: true, user: { select: { name: true, email: true } } },
+        });
+        
+        if (!leader) {
+          throw new HttpError(400, "Este equipo no tiene un líder asignado. Por favor proporciona byUserId en la petición.");
+        }
+        
+        byUserId = leader.userId;
+        console.log(`✅ Líder encontrado automáticamente: ${leader.user.name || leader.user.email} (${byUserId})`);
+      }
 
       // ✨ MEJORADO: Mejor mensaje de error en validación de líder
       console.log("🔍 [1/5] Verificando permisos del usuario...");
