@@ -226,6 +226,12 @@ const UserSkillParams = z.object({
   userId: z.string().min(1),
   skillId: z.string().min(1),
 });
+
+const UserSkillIdParams = z.object({
+  userId: z.string().min(1),
+  id: z.string().min(1), // ID de la relación UserSkill
+});
+
 const UpdateLevelBody = z.object({
   level: z.number().int().min(1).max(5),
 });
@@ -251,30 +257,36 @@ router.patch(
   }
 );
 
-router.delete("/:userId/skills/:skillId", validate(UserSkillParams, "params"), async (req, res, next) => {
+// DELETE usando el ID de la relación UserSkill (no el skillId)
+router.delete("/:userId/skills/:id", validate(UserSkillIdParams, "params"), async (req, res, next) => {
   try {
-    const { userId, skillId } = req.params;
+    const { userId, id } = req.params;
     
-    // 1. ✅ Verificar que la skill pertenece al usuario
-    const userSkill = await prisma.userSkill.findFirst({
-      where: { 
-        userId,
-        skillId
-      }
+    console.log(`🗑️ DELETE UserSkill - userId: ${userId}, userSkillId: ${id}`);
+    
+    // 1. ✅ Buscar el UserSkill por su ID
+    const userSkill = await prisma.userSkill.findUnique({
+      where: { id }
     });
 
+    // 2. Verificar que existe y pertenece al usuario
     if (!userSkill) {
-      return next(new HttpError(404, "Skill no encontrado o no pertenece al usuario"));
+      console.warn(`⚠️ UserSkill no encontrado: ${id}`);
+      return next(new HttpError(404, "Skill no encontrado"));
+    }
+
+    if (userSkill.userId !== userId) {
+      console.warn(`⚠️ UserSkill no pertenece al usuario - userSkillId: ${id}, esperado userId: ${userId}, actual userId: ${userSkill.userId}`);
+      return next(new HttpError(404, "Skill no pertenece al usuario"));
     }
     
-    // 2. Eliminar la skill del usuario
+    // 3. Eliminar el UserSkill
+    const skillId = userSkill.skillId; // Guardar para usar en auto-limpieza
     await prisma.userSkill.delete({
-      where: { 
-        userId_skillId: { userId, skillId } 
-      },
+      where: { id }
     });
 
-    // 3. 🔄 AUTO-LIMPIAR: Limpiar skill de equipos si ningún otro miembro la tiene
+    // 4. 🔄 AUTO-LIMPIAR: Limpiar skill de equipos si ningún otro miembro la tiene
     const userTeams = await prisma.teamMember.findMany({
       where: { userId },
       select: { teamId: true }
@@ -308,7 +320,7 @@ router.delete("/:userId/skills/:skillId", validate(UserSkillParams, "params"), a
       }
     }
 
-    console.log(`✅ Skill eliminada del usuario y de ${teamsUpdated} equipo(s)`);
+    console.log(`✅ UserSkill eliminado: ${id}, skill: ${skillId}, equipos actualizados: ${teamsUpdated}`);
     
     res.status(204).send();
   } catch (e) {
