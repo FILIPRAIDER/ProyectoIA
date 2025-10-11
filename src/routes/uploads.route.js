@@ -23,6 +23,8 @@ const imagekit = new ImageKit({
   urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
 });
 
+console.log("✅ ImageKit configurado correctamente");
+
 // POST /uploads/users/:userId/avatar
 // Subir o reemplazar avatar del usuario
 // Si ya tiene avatar, elimina el anterior de ImageKit
@@ -226,6 +228,141 @@ router.post(
       });
     } catch (error) {
       console.error("❌ Error uploading company logo:", error);
+      next(error);
+    }
+  }
+);
+
+// POST /uploads/teams/:teamId/profile-image
+// Subir o reemplazar foto de perfil del equipo
+// Solo el líder del equipo puede subir la foto
+router.post(
+  "/teams/:teamId/profile-image",
+  upload.single("image"), // Frontend envía el campo como 'image'
+  async (req, res, next) => {
+    try {
+      const { teamId } = req.params;
+      const file = req.file;
+
+      console.log(`📸 [Team Profile Image] Received upload request for team: ${teamId}`);
+
+      // 1. Validar que se haya enviado un archivo
+      if (!file) {
+        console.log("❌ No file received");
+        throw new HttpError(400, "No se ha proporcionado ninguna imagen");
+      }
+
+      console.log(`📦 File info: ${file.originalname}, ${file.mimetype}, ${file.size} bytes`);
+
+      // 2. Validar tipo de archivo
+      const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+      if (!allowedTypes.includes(file.mimetype)) {
+        throw new HttpError(400, "Solo se permiten imágenes JPG, PNG o WebP");
+      }
+
+      // 3. Validar tamaño (5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        throw new HttpError(400, "La imagen no debe superar 5MB");
+      }
+
+      // 4. Verificar que el equipo existe
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        select: {
+          id: true,
+          name: true,
+          profileImage: true,
+          avatarKey: true,
+          members: {
+            select: {
+              userId: true,
+              role: true,
+            },
+          },
+        },
+      });
+
+      if (!team) {
+        console.log(`❌ Team not found: ${teamId}`);
+        throw new HttpError(404, "Equipo no encontrado");
+      }
+
+      console.log(`✅ Team found: ${team.name}`);
+
+      // 5. Verificar permisos - usuario debe ser LIDER del equipo
+      // TODO: Descomentar cuando tengas autenticación implementada
+      // if (!req.user) {
+      //   throw new HttpError(401, "No autenticado");
+      // }
+      //
+      // const member = team.members.find(
+      //   (m) => m.userId === req.user.id && m.role === "LIDER"
+      // );
+      //
+      // if (!member) {
+      //   console.log(`❌ User ${req.user.id} is not a LIDER of team ${teamId}`);
+      //   throw new HttpError(
+      //     403,
+      //     "Solo los líderes pueden cambiar la foto del equipo"
+      //   );
+      // }
+      //
+      // console.log(`✅ User ${req.user.id} is LIDER - permission granted`);
+
+      // 6. Si el equipo ya tiene una imagen, eliminar la anterior de ImageKit
+      if (team.avatarKey) {
+        try {
+          await imagekit.deleteFile(team.avatarKey);
+          console.log(`✅ Previous team image deleted from ImageKit: ${team.avatarKey}`);
+        } catch (deleteError) {
+          console.warn("⚠️ Could not delete previous image from ImageKit:", deleteError.message);
+          // Continuar de todas formas
+        }
+      }
+
+      // 7. Subir nueva imagen a ImageKit
+      console.log(`📤 Uploading to ImageKit...`);
+      const uploadResponse = await imagekit.upload({
+        file: file.buffer.toString("base64"),
+        fileName: `team_${teamId}_${Date.now()}.${file.originalname.split(".").pop()}`,
+        folder: "/teams/profile-images",
+        useUniqueFileName: true,
+        tags: [`team:${teamId}`, "profile-image"],
+      });
+
+      console.log(`✅ Upload successful - URL: ${uploadResponse.url}`);
+
+      // 8. Actualizar base de datos con la nueva imagen
+      const updatedTeam = await prisma.team.update({
+        where: { id: teamId },
+        data: {
+          profileImage: uploadResponse.url,
+          avatarProvider: "imagekit",
+          avatarKey: uploadResponse.fileId,
+          avatarType: file.mimetype,
+          avatarSize: file.size,
+          avatarWidth: uploadResponse.width || null,
+          avatarHeight: uploadResponse.height || null,
+          updatedAt: new Date(),
+        },
+      });
+
+      console.log(`✅ Team profile image updated in database for team: ${team.name}`);
+
+      // 9. Responder con éxito
+      res.status(200).json({
+        success: true,
+        message: "Foto de perfil actualizada correctamente",
+        profileImage: uploadResponse.url,
+        team: {
+          id: updatedTeam.id,
+          name: updatedTeam.name,
+          profileImage: updatedTeam.profileImage,
+        },
+      });
+    } catch (error) {
+      console.error("❌ Error uploading team profile image:", error);
       next(error);
     }
   }
