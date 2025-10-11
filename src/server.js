@@ -45,6 +45,7 @@ const corsOptions =
             process.env.FRONTEND_URL, // URL de Vercel
             "https://bridge-ai-api.onrender.com", // AI-API en Render
             "http://localhost:4101", // AI-API local
+            "http://localhost:3000", // Frontend local
             // Agregar más dominios si es necesario
           ].filter(Boolean);
 
@@ -61,7 +62,7 @@ const corsOptions =
         optionsSuccessStatus: 200,
       }
     : {
-        // En desarrollo permite todo
+        // En desarrollo permite todo (incluye localhost:3000 y localhost:4101)
         origin: "*",
       };
 
