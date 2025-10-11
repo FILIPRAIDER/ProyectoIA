@@ -147,6 +147,21 @@ model Team {
   description  String?           // descripción del equipo
   city         String?
   area         String? // ya agregado
+  
+  // Imagen de perfil del equipo
+  profileImage        String?   // URL de imagen principal
+  profileImageSmall   String?   // Thumbnail 100x100
+  profileImageMedium  String?   // Thumbnail 300x300
+  profileImageLarge   String?   // Thumbnail 600x600
+  
+  // Metadata de imagen
+  avatarProvider String?         // 'imagekit', 's3', 'cloudinary'
+  avatarKey      String?         // Key en el storage
+  avatarType     String?         // 'image/jpeg', 'image/png'
+  avatarSize     Int?            // Tamaño en bytes
+  avatarWidth    Int?            // Ancho original
+  avatarHeight   Int?            // Alto original
+  
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   members      TeamMember[]
