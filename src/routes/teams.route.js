@@ -1197,3 +1197,338 @@ router.get(
     }
   }
 );
+
+/* ============================================================================
+   MATCHING ENDPOINTS - Para Frontend de Matching
+============================================================================ */
+
+/* ========== GET /teams/:teamId/profile ========== */
+/**
+ * Obtener perfil completo de un equipo para mostrar en modal de matching
+ * 
+ * Response incluye:
+ * - Información básica del equipo
+ * - Skills con niveles
+ * - Miembros del equipo con sus skills
+ * - Portfolio de proyectos (si existe)
+ * - Disponibilidad
+ * - Rango de presupuesto
+ */
+router.get(
+  "/:teamId/profile",
+  validate(TeamIdOnlyParams, "params"),
+  async (req, res, next) => {
+    try {
+      const { teamId } = req.params;
+
+      // Obtener equipo con todas las relaciones necesarias
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        include: {
+          skills: {
+            include: {
+              skill: true,
+            },
+            orderBy: {
+              skill: { name: "asc" },
+            },
+          },
+          members: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                  avatarUrl: true,
+                  skills: {
+                    include: {
+                      skill: true,
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: {
+              role: "asc",
+            },
+          },
+        },
+      });
+
+      if (!team) {
+        throw new HttpError(404, "Equipo no encontrado");
+      }
+
+      // Calcular estadísticas
+      const totalProjects = 0; // TODO: Implementar cuando exista tabla de proyectos del equipo
+      const completedProjects = 0; // TODO: Implementar
+
+      // Calcular años de experiencia promedio por skill
+      const skillsWithExperience = team.skills.map((ts) => {
+        // Calcular años de experiencia basado en los miembros que tienen esa skill
+        const membersWithSkill = team.members.filter((m) =>
+          m.user.skills.some((us) => us.skillId === ts.skillId)
+        );
+
+        // Años de experiencia estimados (placeholder - mejorar con datos reales)
+        const yearsExperience = membersWithSkill.length > 0 ? 
+          Math.min(6, 2 + membersWithSkill.length) : 3;
+
+        return {
+          id: ts.skill.id,
+          name: ts.skill.name,
+          level: 4, // TODO: Calcular nivel promedio real de los miembros
+          yearsExperience,
+        };
+      });
+
+      // Formatear miembros
+      const formattedMembers = team.members.map((m) => ({
+        id: m.user.id,
+        name: m.user.name,
+        role: m.role === "LIDER" ? "Team Lead" : "Member",
+        avatar: m.user.avatarUrl || null,
+        skills: m.user.skills.map((us) => us.skill.name),
+        yearsExperience: 3, // TODO: Calcular basado en datos reales
+      }));
+
+      // Portfolio (placeholder - implementar cuando exista tabla)
+      const portfolio = [];
+
+      // Response
+      const profile = {
+        id: team.id,
+        name: team.name,
+        description: team.description || `Equipo especializado en ${team.area || "desarrollo de software"}`,
+        city: team.city || "Colombia",
+        country: "Colombia",
+        profileImage: null, // TODO: Agregar campo en BD
+        website: null, // TODO: Agregar campo en BD
+        email: formattedMembers.find((m) => m.role === "Team Lead")?.email || null,
+        phone: null, // TODO: Agregar campo en BD
+
+        verified: false, // TODO: Implementar sistema de verificación
+        rating: 4.5, // TODO: Implementar sistema de ratings
+        totalProjects,
+        completedProjects,
+
+        skills: skillsWithExperience,
+        members: formattedMembers,
+        portfolio,
+
+        availability: {
+          status: "AVAILABLE", // TODO: Agregar campo en BD
+          availableFrom: new Date().toISOString().split("T")[0],
+          hoursPerWeek: 40,
+        },
+
+        budgetRange: {
+          min: 10000000, // TODO: Agregar campos en BD
+          max: 50000000,
+          currency: "COP",
+        },
+      };
+
+      res.json(profile);
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/* ========== POST /teams/:teamId/connect ========== */
+/**
+ * Enviar solicitud de conexión de un empresario a un equipo
+ * 
+ * Request body:
+ * - projectId: ID del proyecto
+ * - companyId: ID de la empresa (del empresario)
+ * - message: Mensaje para el equipo
+ * 
+ * Side effects:
+ * - Crea registro en team_connections
+ * - Envía email al líder del equipo (TODO)
+ * - Crea notificación in-app (TODO)
+ */
+const ConnectTeamBody = z.object({
+  projectId: z.string().min(1, "Project ID es requerido"),
+  companyId: z.string().min(1, "Company ID es requerido"),
+  message: z.string().min(10, "El mensaje debe tener al menos 10 caracteres").max(1000),
+});
+
+router.post(
+  "/:teamId/connect",
+  validate(TeamIdOnlyParams, "params"),
+  validate(ConnectTeamBody),
+  async (req, res, next) => {
+    try {
+      const { teamId } = req.params;
+      const { projectId, companyId, message } = req.body;
+
+      // Validar que el equipo existe
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        select: { id: true, name: true },
+      });
+
+      if (!team) {
+        throw new HttpError(404, "El equipo no existe");
+      }
+
+      // Validar que el proyecto existe
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { id: true, title: true, companyId: true },
+      });
+
+      if (!project) {
+        throw new HttpError(404, "El proyecto no existe");
+      }
+
+      // Validar que el companyId coincide con el del proyecto
+      if (project.companyId !== companyId) {
+        throw new HttpError(403, "No tienes permisos para crear conexiones para este proyecto");
+      }
+
+      // Verificar que no exista una conexión duplicada
+      const existingConnection = await prisma.teamConnection.findFirst({
+        where: {
+          teamId,
+          projectId,
+        },
+      });
+
+      if (existingConnection) {
+        throw new HttpError(409, "Ya enviaste una solicitud a este equipo para este proyecto");
+      }
+
+      // Crear la conexión
+      const connection = await prisma.teamConnection.create({
+        data: {
+          teamId,
+          projectId,
+          companyId,
+          message,
+          status: "PENDING",
+        },
+        include: {
+          team: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          project: {
+            select: {
+              id: true,
+              title: true,
+            },
+          },
+        },
+      });
+
+      // TODO: Enviar email al líder del equipo
+      // TODO: Crear notificación in-app
+
+      res.status(201).json({
+        connectionId: connection.id,
+        status: connection.status,
+        team: connection.team,
+        project: connection.project,
+        createdAt: connection.createdAt,
+        message: "Solicitud enviada. El equipo recibirá una notificación.",
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);
+
+/* ========== GET /teams/:teamId/connections ========== */
+/**
+ * Obtener lista de conexiones/solicitudes de un equipo
+ * 
+ * Query params:
+ * - status: Filtrar por estado (PENDING, ACCEPTED, REJECTED)
+ * 
+ * Solo el líder o miembros del equipo pueden ver las conexiones
+ */
+const ListConnectionsQuery = z.object({
+  status: z.enum(["PENDING", "ACCEPTED", "REJECTED"]).optional(),
+});
+
+router.get(
+  "/:teamId/connections",
+  validate(TeamIdOnlyParams, "params"),
+  validate(ListConnectionsQuery, "query"),
+  async (req, res, next) => {
+    try {
+      const { teamId } = req.params;
+      const { status } = req.query;
+
+      // Validar que el equipo existe
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+      });
+
+      if (!team) {
+        throw new HttpError(404, "Equipo no encontrado");
+      }
+
+      // TODO: Validar que el usuario es miembro del equipo
+
+      // Obtener conexiones
+      const where = {
+        teamId,
+        ...(status ? { status } : {}),
+      };
+
+      const connections = await prisma.teamConnection.findMany({
+        where,
+        include: {
+          project: {
+            select: {
+              id: true,
+              title: true,
+              description: true,
+              budget: true,
+              budgetCurrency: true,
+              startDate: true,
+              endDate: true,
+            },
+          },
+          company: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+      res.json({
+        connections: connections.map((c) => ({
+          id: c.id,
+          project: {
+            ...c.project,
+            timeline: c.project.startDate && c.project.endDate
+              ? `${Math.ceil((new Date(c.project.endDate) - new Date(c.project.startDate)) / (1000 * 60 * 60 * 24 * 30))} meses`
+              : "No especificado",
+          },
+          company: c.company,
+          message: c.message,
+          status: c.status,
+          createdAt: c.createdAt,
+        })),
+        total: connections.length,
+      });
+    } catch (e) {
+      next(e);
+    }
+  }
+);

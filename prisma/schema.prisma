@@ -152,8 +152,9 @@ model Team {
   members      TeamMember[]
   skills       TeamSkill[]
   assignments  TeamAssignment[]
-  applications TeamApplication[] // <-- Add this line
-  invites      TeamInvite[] // <-- Add this line for relation
+  applications TeamApplication[]
+  invites      TeamInvite[]
+  connections  TeamConnection[]  // Relación con conexiones de empresarios
 
   @@index([city, area])
 }
@@ -215,17 +216,18 @@ model Experience {
 }
 
 model Company {
-  id        String    @id @default(cuid())
-  name      String    @unique
-  sector    String?
-  website   String?
-  city      String?
-  about     String?
-  logoUrl   String?   // URL del logo de la empresa
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  projects  Project[]
-  users     User[]    // Relación inversa con usuarios (empresarios)
+  id          String           @id @default(cuid())
+  name        String           @unique
+  sector      String?
+  website     String?
+  city        String?
+  about       String?
+  logoUrl     String?          // URL del logo de la empresa
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  projects    Project[]
+  users       User[]           // Relación inversa con usuarios (empresarios)
+  connections TeamConnection[] // Conexiones con equipos
 }
 
 model Project {
@@ -246,6 +248,7 @@ model Project {
   skills         ProjectSkill[]    // Skills del proyecto con nivel requerido
   assignments    TeamAssignment[]
   applications   TeamApplication[]
+  connections    TeamConnection[]  // Conexiones de equipos a este proyecto
 
   @@index([companyId])
   @@index([status])
@@ -394,4 +397,33 @@ model IndustryKeyword {
   @@index([keyword])
   @@index([industryId])
   @@index([priority])
+}
+
+// === Sistema de Conexiones entre Empresarios y Equipos ===
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model TeamConnection {
+  id        String           @id @default(cuid())
+  teamId    String
+  projectId String
+  companyId String
+  message   String
+  status    ConnectionStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  
+  team    Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@unique([teamId, projectId]) // Evitar duplicados
+  @@index([teamId])
+  @@index([projectId])
+  @@index([companyId])
+  @@index([status])
+  @@map("team_connections")
 }
