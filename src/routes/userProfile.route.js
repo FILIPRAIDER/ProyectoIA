@@ -306,11 +306,27 @@ router.delete(
   validate(CertParams, "params"),
   async (req, res, next) => {
     try {
-      await prisma.certification.delete({ where: { id: req.params.certId } });
+      // ✅ Verificar que la certificación pertenece al usuario
+      const certification = await prisma.certification.findFirst({
+        where: { 
+          id: req.params.certId,
+          userId: req.params.userId
+        }
+      });
+
+      if (!certification) {
+        return next(new HttpError(404, "Certificación no encontrada o no pertenece al usuario"));
+      }
+
+      // Eliminar la certificación
+      await prisma.certification.delete({ 
+        where: { id: req.params.certId } 
+      });
+      
+      console.log(`✅ Certificación eliminada: ${req.params.certId} del usuario ${req.params.userId}`);
       res.status(204).send();
     } catch (e) {
-      if (e?.code === "P2025")
-        return next(new HttpError(404, "Certificación no encontrada"));
+      console.error("Error deleting certification:", e);
       next(e);
     }
   }
@@ -417,11 +433,27 @@ router.delete(
   validate(ExpParams, "params"),
   async (req, res, next) => {
     try {
-      await prisma.experience.delete({ where: { id: req.params.expId } });
+      // ✅ Verificar que la experiencia pertenece al usuario
+      const experience = await prisma.experience.findFirst({
+        where: { 
+          id: req.params.expId,
+          userId: req.params.userId
+        }
+      });
+
+      if (!experience) {
+        return next(new HttpError(404, "Experiencia no encontrada o no pertenece al usuario"));
+      }
+
+      // Eliminar la experiencia
+      await prisma.experience.delete({ 
+        where: { id: req.params.expId } 
+      });
+      
+      console.log(`✅ Experiencia eliminada: ${req.params.expId} del usuario ${req.params.userId}`);
       res.status(204).send();
     } catch (e) {
-      if (e?.code === "P2025")
-        return next(new HttpError(404, "Experiencia no encontrada"));
+      console.error("Error deleting experience:", e);
       next(e);
     }
   }

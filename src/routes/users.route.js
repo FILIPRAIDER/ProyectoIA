@@ -255,12 +255,26 @@ router.delete("/:userId/skills/:skillId", validate(UserSkillParams, "params"), a
   try {
     const { userId, skillId } = req.params;
     
-    // 1. Eliminar la skill del usuario
-    await prisma.userSkill.delete({
-      where: { userId_skillId: { userId, skillId } },
+    // 1. ✅ Verificar que la skill pertenece al usuario
+    const userSkill = await prisma.userSkill.findFirst({
+      where: { 
+        userId,
+        skillId
+      }
     });
 
-    // 2. 🔄 AUTO-LIMPIAR: Limpiar skill de equipos si ningún otro miembro la tiene
+    if (!userSkill) {
+      return next(new HttpError(404, "Skill no encontrado o no pertenece al usuario"));
+    }
+    
+    // 2. Eliminar la skill del usuario
+    await prisma.userSkill.delete({
+      where: { 
+        userId_skillId: { userId, skillId } 
+      },
+    });
+
+    // 3. 🔄 AUTO-LIMPIAR: Limpiar skill de equipos si ningún otro miembro la tiene
     const userTeams = await prisma.teamMember.findMany({
       where: { userId },
       select: { teamId: true }
@@ -298,9 +312,7 @@ router.delete("/:userId/skills/:skillId", validate(UserSkillParams, "params"), a
     
     res.status(204).send();
   } catch (e) {
-    if (e?.code === "P2025") {
-      return next(new HttpError(404, "Relación user-skill no encontrada"));
-    }
+    console.error("Error deleting user skill:", e);
     next(e);
   }
 });
