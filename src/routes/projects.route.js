@@ -20,6 +20,15 @@ const CreateProjectBody = z.object({
   budgetCurrency: z.enum(["COP", "USD"]).optional().default("COP"), // 💱 Moneda del presupuesto
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
+  skills: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        levelRequired: z.number().int().min(1).max(5).optional(),
+      })
+    )
+    .optional()
+    .default([]), // 🎯 Skills con nivel requerido
 });
 
 const ProjectIdParams = z.object({ id: z.string().min(1) });
@@ -76,7 +85,37 @@ router.post("/", validate(CreateProjectBody), async (req, res, next) => {
       },
     });
 
-    res.status(201).json(created);
+    // 🎯 Procesar skills (UPSERT + crear relación ProjectSkill)
+    if (req.body.skills && req.body.skills.length > 0) {
+      for (const skillData of req.body.skills) {
+        // 1. Buscar o crear la skill
+        const skill = await prisma.skill.upsert({
+          where: { name: skillData.name },
+          update: {}, // No actualizar nada si ya existe
+          create: { name: skillData.name },
+        });
+
+        // 2. Crear relación ProjectSkill
+        await prisma.projectSkill.create({
+          data: {
+            projectId: created.id,
+            skillId: skill.id,
+            levelRequired: skillData.levelRequired ?? null,
+          },
+        });
+      }
+    }
+
+    // Retornar proyecto con skills incluidas
+    const projectWithSkills = await prisma.project.findUnique({
+      where: { id: created.id },
+      include: {
+        company: { select: { id: true, name: true } },
+        skills: { include: { skill: true } },
+      },
+    });
+
+    res.status(201).json(projectWithSkills);
   } catch (e) {
     next(e);
   }

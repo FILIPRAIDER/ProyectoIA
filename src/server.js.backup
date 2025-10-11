@@ -63,10 +63,7 @@ const corsOptions =
       }
     : {
         // En desarrollo permite todo (incluye localhost:3000 y localhost:4101)
-        origin: ["http://localhost:3000", "http://localhost:4101", "http://localhost:3001"],
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-By", "User-Agent"],
+        origin: "*",
       };
 
 app.use(cors(corsOptions));

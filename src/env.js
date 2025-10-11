@@ -2,10 +2,19 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
-/** Asegura sslmode=require en la cadena de conexión (Clever Cloud) */
+/** Asegura sslmode=require en la cadena de conexión SOLO si no es localhost */
 function ensureSSL(url) {
   if (!url) return url;
+  
+  // Si ya tiene sslmode configurado, no hacer nada
   if (url.includes("sslmode=")) return url;
+  
+  // Si es localhost o 127.0.0.1 (base de datos local), NO agregar SSL
+  if (url.includes("localhost") || url.includes("127.0.0.1")) {
+    return url;
+  }
+  
+  // Para bases de datos remotas (Neon, Clever Cloud, etc.), agregar SSL
   return url.includes("?") ? `${url}&sslmode=require` : `${url}?sslmode=require`;
 }
 
