@@ -1,0 +1,270 @@
+{
+  "title": "DELETE Endpoints - API Examples",
+  "version": "1.1.0",
+  "date": "2025-10-11",
+  "baseUrl": "http://localhost:4001",
+  "productionUrl": "https://proyectoia-backend.onrender.com",
+  
+  "endpoints": [
+    {
+      "name": "Delete User Skill",
+      "method": "DELETE",
+      "path": "/users/:userId/skills/:skillId",
+      "description": "Elimina una skill del usuario y opcionalmente de sus equipos",
+      "authentication": "Required",
+      
+      "pathParams": {
+        "userId": "ID del usuario (debe ser el usuario autenticado)",
+        "skillId": "ID de la skill a eliminar"
+      },
+      
+      "examples": [
+        {
+          "scenario": "Eliminación exitosa",
+          "request": {
+            "method": "DELETE",
+            "url": "/users/cm2d1qk7w0001xiw5/skills/cm2d1qk8x0008xiw5",
+            "headers": {
+              "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+              "Content-Type": "application/json"
+            }
+          },
+          "response": {
+            "status": 204,
+            "statusText": "No Content",
+            "body": null,
+            "headers": {
+              "Content-Length": "0"
+            }
+          }
+        },
+        {
+          "scenario": "Skill no encontrado o no pertenece",
+          "request": {
+            "method": "DELETE",
+            "url": "/users/cm2d1qk7w0001xiw5/skills/skill_fake_id",
+            "headers": {
+              "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+              "Content-Type": "application/json"
+            }
+          },
+          "response": {
+            "status": 404,
+            "statusText": "Not Found",
+            "body": {
+              "error": {
+                "message": "Skill no encontrado o no pertenece al usuario"
+              }
+            },
+            "headers": {
+              "Content-Type": "application/json"
+            }
+          }
+        }
+      ],
+      
+      "curlExample": "curl -X DELETE 'http://localhost:4001/users/USER_ID/skills/SKILL_ID' \\\n  -H 'Authorization: Bearer YOUR_TOKEN'",
+      
+      "fetchExample": "const response = await fetch(\n  `${API_URL}/users/${userId}/skills/${skillId}`,\n  {\n    method: 'DELETE',\n    headers: {\n      'Authorization': `Bearer ${token}`\n    }\n  }\n);\n\nif (response.status === 204) {\n  // Éxito\n} else if (response.status === 404) {\n  const error = await response.json();\n  console.error(error.error.message);\n}"
+    },
+    
+    {
+      "name": "Delete User Certification",
+      "method": "DELETE",
+      "path": "/users/:userId/certifications/:certId",
+      "description": "Elimina una certificación del usuario",
+      "authentication": "Required",
+      
+      "pathParams": {
+        "userId": "ID del usuario (debe ser el usuario autenticado)",
+        "certId": "ID de la certificación a eliminar"
+      },
+      
+      "examples": [
+        {
+          "scenario": "Eliminación exitosa",
+          "request": {
+            "method": "DELETE",
+            "url": "/users/cm2d1qk7w0001xiw5/certifications/cm2d1qk9y0015xiw5",
+            "headers": {
+              "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+              "Content-Type": "application/json"
+            }
+          },
+          "response": {
+            "status": 204,
+            "statusText": "No Content",
+            "body": null,
+            "headers": {
+              "Content-Length": "0"
+            }
+          }
+        },
+        {
+          "scenario": "Certificación no encontrada o no pertenece",
+          "request": {
+            "method": "DELETE",
+            "url": "/users/cm2d1qk7w0001xiw5/certifications/cert_fake_id",
+            "headers": {
+              "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+              "Content-Type": "application/json"
+            }
+          },
+          "response": {
+            "status": 404,
+            "statusText": "Not Found",
+            "body": {
+              "error": {
+                "message": "Certificación no encontrada o no pertenece al usuario"
+              }
+            },
+            "headers": {
+              "Content-Type": "application/json"
+            }
+          }
+        }
+      ],
+      
+      "curlExample": "curl -X DELETE 'http://localhost:4001/users/USER_ID/certifications/CERT_ID' \\\n  -H 'Authorization: Bearer YOUR_TOKEN'",
+      
+      "axiosExample": "try {\n  await axios.delete(\n    `/users/${userId}/certifications/${certId}`,\n    {\n      headers: {\n        Authorization: `Bearer ${token}`\n      }\n    }\n  );\n  // Éxito - status 204\n} catch (error) {\n  if (error.response?.status === 404) {\n    console.error(error.response.data.error.message);\n  }\n}"
+    },
+    
+    {
+      "name": "Delete User Experience",
+      "method": "DELETE",
+      "path": "/users/:userId/experiences/:expId",
+      "description": "Elimina una experiencia laboral del usuario",
+      "authentication": "Required",
+      
+      "pathParams": {
+        "userId": "ID del usuario (debe ser el usuario autenticado)",
+        "expId": "ID de la experiencia a eliminar"
+      },
+      
+      "examples": [
+        {
+          "scenario": "Eliminación exitosa",
+          "request": {
+            "method": "DELETE",
+            "url": "/users/cm2d1qk7w0001xiw5/experiences/cm2d1qkaz0022xiw5",
+            "headers": {
+              "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+              "Content-Type": "application/json"
+            }
+          },
+          "response": {
+            "status": 204,
+            "statusText": "No Content",
+            "body": null,
+            "headers": {
+              "Content-Length": "0"
+            }
+          }
+        },
+        {
+          "scenario": "Experiencia no encontrada o no pertenece",
+          "request": {
+            "method": "DELETE",
+            "url": "/users/cm2d1qk7w0001xiw5/experiences/exp_fake_id",
+            "headers": {
+              "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+              "Content-Type": "application/json"
+            }
+          },
+          "response": {
+            "status": 404,
+            "statusText": "Not Found",
+            "body": {
+              "error": {
+                "message": "Experiencia no encontrada o no pertenece al usuario"
+              }
+            },
+            "headers": {
+              "Content-Type": "application/json"
+            }
+          }
+        }
+      ],
+      
+      "curlExample": "curl -X DELETE 'http://localhost:4001/users/USER_ID/experiences/EXP_ID' \\\n  -H 'Authorization: Bearer YOUR_TOKEN'",
+      
+      "reactQueryExample": "const { mutate: deleteExperience } = useMutation({\n  mutationFn: (expId: string) => \n    api.delete(`/users/${userId}/experiences/${expId}`),\n  onSuccess: () => {\n    toast.success('Experiencia eliminada');\n    queryClient.invalidateQueries(['experiences', userId]);\n  },\n  onError: (error: any) => {\n    const message = error.response?.data?.error?.message;\n    toast.error(message || 'Error al eliminar');\n  }\n});"
+    }
+  ],
+  
+  "statusCodes": {
+    "204": {
+      "name": "No Content",
+      "description": "Recurso eliminado exitosamente",
+      "body": null,
+      "action": "Actualizar UI, remover item de la lista"
+    },
+    "404": {
+      "name": "Not Found",
+      "description": "Recurso no encontrado o no pertenece al usuario",
+      "body": {
+        "error": {
+          "message": "string"
+        }
+      },
+      "action": "Mostrar error o refrescar lista"
+    },
+    "500": {
+      "name": "Internal Server Error",
+      "description": "Error del servidor al procesar la solicitud",
+      "body": {
+        "error": {
+          "message": "string"
+        }
+      },
+      "action": "Mostrar error genérico, sugerir reintentar"
+    }
+  },
+  
+  "security": {
+    "ownership": "El backend verifica que el recurso pertenezca al usuario antes de eliminarlo",
+    "authentication": "Requiere token JWT válido en el header Authorization",
+    "authorization": "Solo el propietario puede eliminar sus recursos"
+  },
+  
+  "changelog": {
+    "version": "1.1.0",
+    "date": "2025-10-11",
+    "changes": [
+      "Agregada verificación de ownership antes de eliminar",
+      "Mensajes de error más descriptivos",
+      "Logs de auditoría en el backend",
+      "Mayor seguridad contra eliminación no autorizada"
+    ],
+    "breaking": false,
+    "migration": "No se requieren cambios en el frontend"
+  },
+  
+  "testing": {
+    "thunderClient": {
+      "collection": "Ver Thunder Client collection en ./thunder-tests/",
+      "environment": {
+        "baseUrl": "http://localhost:4001",
+        "token": "YOUR_JWT_TOKEN",
+        "userId": "YOUR_USER_ID"
+      }
+    },
+    "postman": {
+      "collection": "Importar desde Swagger/OpenAPI",
+      "variables": {
+        "{{baseUrl}}": "http://localhost:4001",
+        "{{token}}": "Bearer YOUR_JWT_TOKEN",
+        "{{userId}}": "YOUR_USER_ID"
+      }
+    }
+  },
+  
+  "notes": [
+    "Todas las respuestas 204 tienen body vacío",
+    "Los errores 404 no revelan si el recurso existe o no pertenece (seguridad)",
+    "Las skills eliminadas se auto-limpian de los equipos si nadie más las tiene",
+    "Todos los endpoints requieren autenticación",
+    "Los IDs deben ser CUIDs válidos"
+  ]
+}
