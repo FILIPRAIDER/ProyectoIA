@@ -13,22 +13,42 @@ async function testMatching() {
 
   try {
     // 1. Buscar un proyecto de prueba
-    const project = await prisma.project.findFirst({
-      where: {
-        title: {
-          contains: "E-commerce",
-          mode: "insensitive",
+    const projectId = process.argv[2]; // ID desde línea de comandos
+    
+    let project;
+    if (projectId) {
+      project = await prisma.project.findUnique({
+        where: { id: projectId },
+        include: {
+          skills: {
+            include: {
+              skill: true,
+            },
+          },
+          company: true,
         },
-      },
-      include: {
-        skills: {
-          include: {
-            skill: true,
+      });
+    } else {
+      // Buscar proyecto más reciente con skills
+      project = await prisma.project.findFirst({
+        where: {
+          skills: {
+            some: {},
           },
         },
-        company: true,
-      },
-    });
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          skills: {
+            include: {
+              skill: true,
+            },
+          },
+          company: true,
+        },
+      });
+    }
 
     if (!project) {
       console.log("❌ No hay proyectos de prueba");

@@ -172,11 +172,13 @@ model TeamMember {
 }
 
 model TeamSkill {
-  id      String @id @default(cuid())
-  teamId  String
-  skillId String
-  team    Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  skill   Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  id              String @id @default(cuid())
+  teamId          String
+  skillId         String
+  level           Int?   // Nivel de dominio 1-5 (1=Junior, 5=Expert)
+  yearsExperience Int?   // Años de experiencia con esta skill
+  team            Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  skill           Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
 
   @@unique([teamId, skillId])
 }
