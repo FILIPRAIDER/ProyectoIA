@@ -75,7 +75,8 @@ router.post(
         rating: team.rating || null, // Si tienes rating real, ponlo aquí
         location: team.city || "",
         availability: team.avgAvailability !== undefined ? (team.avgAvailability === 0 ? "No disponible" : "Inmediata") : "",
-        matchScore: team.score || 0
+        matchScore: team.score || 0,
+        skillCoverage: team.breakdown?.skillCoverage || 0  // Porcentaje real de skills coincidentes
       }));
 
       res.json({
