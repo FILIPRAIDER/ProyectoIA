@@ -4,7 +4,7 @@
 
 import { PrismaClient } from "@prisma/client";
 
-const PROJECT_ID = "cmglus9cs000x5pum597dk5tg";
+const PROJECT_ID = process.env.PROJECT_ID || "cmglus9cs000x5pum597dk5tg";
 
 const prisma = new PrismaClient();
 
